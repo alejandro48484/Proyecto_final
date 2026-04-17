@@ -1,0 +1,208 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum RolUsuario {
+  ADMINISTRADOR
+  GESTOR_RRHH
+  EMPLEADO
+  @@map("rol_usuario")
+}
+
+enum EstadoLaboral {
+  ACTIVO
+  SUSPENDIDO
+  RETIRADO
+  @@map("estado_laboral")
+}
+
+enum TipoDocumento {
+  CONTRATO
+  CERTIFICADO_ESTUDIO
+  DPI
+  ANTECEDENTES_PENALES
+  ANTECEDENTES_POLICIALES
+  CONSTANCIA
+  CARTA_RECOMENDACION
+  @@map("tipo_documento")
+}
+
+enum TipoPeriodo {
+  MENSUAL
+  QUINCENAL
+  @@map("tipo_periodo")
+}
+
+enum EstadoPeriodo {
+  ABIERTO
+  CERRADO
+  @@map("estado_periodo")
+}
+
+enum AccionAuditoria {
+  CREAR
+  ACTUALIZAR
+  ELIMINAR
+  @@map("accion_auditoria")
+}
+
+model Departamento {
+  id          Int       @id @default(autoincrement())
+  nombre      String    @unique @db.VarChar(100)
+  descripcion String?   @db.Text
+  creadoEn    DateTime  @default(now()) @map("creado_en") @db.Timestamp(6)
+  empleados   Empleado[]
+  @@map("departamento")
+}
+
+model Empleado {
+  id               Int           @id @default(autoincrement())
+  nombres          String        @db.VarChar(100)
+  apellidos        String        @db.VarChar(100)
+  fechaNacimiento  DateTime      @map("fecha_nacimiento") @db.Date
+  direccion        String?       @db.VarChar(255)
+  telefono         String?       @db.VarChar(20)
+  correo           String?       @unique @db.VarChar(150)
+  numeroDpi        String        @unique @map("numero_dpi") @db.VarChar(15)
+  salarioBase      Decimal       @default(0) @map("salario_base") @db.Decimal(10, 2)
+  cargo            String        @db.VarChar(100)
+  departamentoId   Int           @map("departamento_id")
+  estadoLaboral    EstadoLaboral @default(ACTIVO) @map("estado_laboral")
+  creadoEn         DateTime      @default(now()) @map("creado_en") @db.Timestamp(6)
+  actualizadoEn    DateTime      @updatedAt @map("actualizado_en") @db.Timestamp(6)
+  departamento         Departamento           @relation(fields: [departamentoId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  usuario              Usuario?
+  informacionAcademica InformacionAcademica[]
+  documentos           Documento[]
+  detallesNomina       DetalleNomina[]
+  @@index([departamentoId], map: "idx_empleado_departamento")
+  @@index([estadoLaboral], map: "idx_empleado_estado")
+  @@index([numeroDpi], map: "idx_empleado_dpi")
+  @@map("empleado")
+}
+
+model Usuario {
+  id             Int         @id @default(autoincrement())
+  correo         String      @unique @db.VarChar(150)
+  contrasena     String      @db.VarChar(255)
+  rol            RolUsuario  @default(EMPLEADO)
+  empleadoId     Int?        @unique @map("empleado_id")
+  activo         Boolean     @default(true)
+  creadoEn       DateTime    @default(now()) @map("creado_en") @db.Timestamp(6)
+  actualizadoEn  DateTime    @updatedAt @map("actualizado_en") @db.Timestamp(6)
+  empleado            Empleado?           @relation(fields: [empleadoId], references: [id], onUpdate: Cascade, onDelete: SetNull)
+  documentosSubidos   Documento[]         @relation("DocumentosSubidosPorUsuario")
+  ajustesRealizados   AjusteNomina[]      @relation("AjustesRealizadosPorUsuario")
+  registrosAuditoria  RegistroAuditoria[] @relation("AuditoriaPorUsuario")
+  @@index([correo], map: "idx_usuario_correo")
+  @@index([rol], map: "idx_usuario_rol")
+  @@map("usuario")
+}
+
+model InformacionAcademica {
+  id                   Int       @id @default(autoincrement())
+  empleadoId           Int       @map("empleado_id")
+  tituloAcademico      String    @map("titulo_academico") @db.VarChar(200)
+  certificacion        String?   @db.VarChar(200)
+  institucionEducativa String    @map("institucion_educativa") @db.VarChar(200)
+  fechaGraduacion      DateTime? @map("fecha_graduacion") @db.Date
+  creadoEn             DateTime  @default(now()) @map("creado_en") @db.Timestamp(6)
+  empleado Empleado @relation(fields: [empleadoId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  @@index([empleadoId], map: "idx_academica_empleado")
+  @@map("informacion_academica")
+}
+
+model DocumentoRequerido {
+  id             Int            @id @default(autoincrement())
+  tipoDocumento  TipoDocumento  @unique @map("tipo_documento")
+  descripcion    String?        @db.VarChar(255)
+  esObligatorio  Boolean        @default(true) @map("es_obligatorio")
+  creadoEn       DateTime       @default(now()) @map("creado_en") @db.Timestamp(6)
+  @@map("documento_requerido")
+}
+
+model Documento {
+  id                    Int            @id @default(autoincrement())
+  empleadoId            Int            @map("empleado_id")
+  tipoDocumento         TipoDocumento  @map("tipo_documento")
+  nombreOriginal        String         @map("nombre_original") @db.VarChar(255)
+  rutaArchivo           String         @map("ruta_archivo") @db.VarChar(500)
+  fechaCarga            DateTime       @default(now()) @map("fecha_carga") @db.Timestamp(6)
+  subidoPorUsuarioId    Int            @map("subido_por_usuario_id")
+  empleado         Empleado @relation(fields: [empleadoId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  subidoPorUsuario Usuario  @relation("DocumentosSubidosPorUsuario", fields: [subidoPorUsuarioId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  @@index([empleadoId], map: "idx_documento_empleado")
+  @@index([tipoDocumento], map: "idx_documento_tipo")
+  @@map("documento")
+}
+
+model PeriodoNomina {
+  id           Int             @id @default(autoincrement())
+  tipoPeriodo  TipoPeriodo     @map("tipo_periodo")
+  fechaInicio  DateTime        @map("fecha_inicio") @db.Date
+  fechaFin     DateTime        @map("fecha_fin") @db.Date
+  estado       EstadoPeriodo   @default(ABIERTO)
+  creadoEn     DateTime        @default(now()) @map("creado_en") @db.Timestamp(6)
+  detalles DetalleNomina[]
+  @@index([estado], map: "idx_periodo_estado")
+  @@index([fechaInicio, fechaFin], map: "idx_periodo_fechas")
+  @@map("periodo_nomina")
+}
+
+model DetalleNomina {
+  id                Int       @id @default(autoincrement())
+  periodoNominaId   Int       @map("periodo_nomina_id")
+  empleadoId        Int       @map("empleado_id")
+  salarioBase       Decimal   @default(0) @map("salario_base") @db.Decimal(10, 2)
+  horasExtra        Decimal   @default(0) @map("horas_extra") @db.Decimal(10, 2)
+  bonificaciones    Decimal   @default(0) @db.Decimal(10, 2)
+  deducciones       Decimal   @default(0) @db.Decimal(10, 2)
+  igss              Decimal   @default(0) @db.Decimal(10, 2)
+  irtra             Decimal   @default(0) @db.Decimal(10, 2)
+  salarioNeto       Decimal   @default(0) @map("salario_neto") @db.Decimal(10, 2)
+  creadoEn          DateTime  @default(now()) @map("creado_en") @db.Timestamp(6)
+  periodoNomina PeriodoNomina   @relation(fields: [periodoNominaId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  empleado      Empleado        @relation(fields: [empleadoId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  ajustes       AjusteNomina[]
+  @@unique([periodoNominaId, empleadoId], map: "uq_detalle_periodo_empleado")
+  @@index([periodoNominaId], map: "idx_detalle_periodo")
+  @@index([empleadoId], map: "idx_detalle_empleado")
+  @@map("detalle_nomina")
+}
+
+model AjusteNomina {
+  id                        Int      @id @default(autoincrement())
+  detalleNominaId           Int      @map("detalle_nomina_id")
+  ajustadoPorUsuarioId      Int      @map("ajustado_por_usuario_id")
+  campo                     String   @db.VarChar(50)
+  valorAnterior             Decimal? @map("valor_anterior") @db.Decimal(10, 2)
+  valorNuevo                Decimal? @map("valor_nuevo") @db.Decimal(10, 2)
+  motivo                    String?  @db.Text
+  fechaAjuste               DateTime @default(now()) @map("fecha_ajuste") @db.Timestamp(6)
+  detalleNomina      DetalleNomina @relation(fields: [detalleNominaId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  ajustadoPorUsuario Usuario       @relation("AjustesRealizadosPorUsuario", fields: [ajustadoPorUsuarioId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  @@index([detalleNominaId], map: "idx_ajuste_detalle")
+  @@index([fechaAjuste], map: "idx_ajuste_fecha")
+  @@map("ajuste_nomina")
+}
+
+model RegistroAuditoria {
+  id          BigInt           @id @default(autoincrement())
+  usuarioId   Int?             @map("usuario_id")
+  accion      AccionAuditoria
+  entidad     String           @db.VarChar(50)
+  entidadId   Int?             @map("entidad_id")
+  cambios     Json?            @db.JsonB
+  fechaHora   DateTime         @default(now()) @map("fecha_hora") @db.Timestamp(6)
+  usuario Usuario? @relation("AuditoriaPorUsuario", fields: [usuarioId], references: [id], onUpdate: Cascade, onDelete: SetNull)
+  @@index([usuarioId], map: "idx_auditoria_usuario")
+  @@index([entidad, entidadId], map: "idx_auditoria_entidad")
+  @@index([fechaHora], map: "idx_auditoria_fecha")
+  @@map("registro_auditoria")
+}
