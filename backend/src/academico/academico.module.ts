@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
-import { AcademicoController } from './academico.controller';
 import { AcademicoService } from './academico.service';
+import { AcademicoController } from './academico.controller';
 
 @Module({
   controllers: [AcademicoController],
-  providers: [AcademicoService]
+  providers: [AcademicoService],
+  exports: [AcademicoService],
 })
 export class AcademicoModule {}
