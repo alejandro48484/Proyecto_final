@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
-import { NominaController } from './nomina.controller';
 import { NominaService } from './nomina.service';
+import { NominaController } from './nomina.controller';
 
 @Module({
   controllers: [NominaController],
-  providers: [NominaService]
+  providers: [NominaService],
+  exports: [NominaService],
 })
 export class NominaModule {}
