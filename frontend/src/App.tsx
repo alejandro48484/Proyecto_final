@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CircularProgress, Box } from '@mui/material';
 import LoginPage from './pages/auth/LoginPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
+import Layout from './components/Layout';
 
 const queryClient = new QueryClient();
 
@@ -27,7 +28,15 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={token ? <Navigate to="/dashboard" /> : <LoginPage />} />
-      <Route path="/dashboard" element={<RutaProtegida><DashboardPage /></RutaProtegida>} />
+      <Route element={<RutaProtegida><Layout /></RutaProtegida>}>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/empleados" element={<Box sx={{ p: 2 }}>Página de Empleados - Próximamente</Box>} />
+        <Route path="/academico" element={<Box sx={{ p: 2 }}>Página de Académico - Próximamente</Box>} />
+        <Route path="/expediente" element={<Box sx={{ p: 2 }}>Página de Expediente - Próximamente</Box>} />
+        <Route path="/nomina" element={<Box sx={{ p: 2 }}>Página de Nómina - Próximamente</Box>} />
+        <Route path="/reportes" element={<Box sx={{ p: 2 }}>Página de Reportes - Próximamente</Box>} />
+        <Route path="/departamentos" element={<Box sx={{ p: 2 }}>Página de Departamentos - Próximamente</Box>} />
+      </Route>
       <Route path="*" element={<Navigate to="/dashboard" />} />
     </Routes>
   );
