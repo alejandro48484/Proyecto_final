@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
-import { ExpedienteController } from './expediente.controller';
 import { ExpedienteService } from './expediente.service';
+import { ExpedienteController } from './expediente.controller';
 
 @Module({
   controllers: [ExpedienteController],
-  providers: [ExpedienteService]
+  providers: [ExpedienteService],
+  exports: [ExpedienteService],
 })
 export class ExpedienteModule {}
