@@ -5,6 +5,7 @@ import { CircularProgress, Box } from '@mui/material';
 import LoginPage from './pages/auth/LoginPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import Layout from './components/Layout';
+import EmpleadosPage from './pages/empleados/EmpleadosPage';
 
 const queryClient = new QueryClient();
 
@@ -30,7 +31,7 @@ function AppRoutes() {
       <Route path="/login" element={token ? <Navigate to="/dashboard" /> : <LoginPage />} />
       <Route element={<RutaProtegida><Layout /></RutaProtegida>}>
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/empleados" element={<Box sx={{ p: 2 }}>Página de Empleados - Próximamente</Box>} />
+        <Route path="/empleados" element={<EmpleadosPage />} />
         <Route path="/academico" element={<Box sx={{ p: 2 }}>Página de Académico - Próximamente</Box>} />
         <Route path="/expediente" element={<Box sx={{ p: 2 }}>Página de Expediente - Próximamente</Box>} />
         <Route path="/nomina" element={<Box sx={{ p: 2 }}>Página de Nómina - Próximamente</Box>} />
