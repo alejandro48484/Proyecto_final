@@ -8,6 +8,10 @@ import Layout from './components/Layout';
 import EmpleadosPage from './pages/empleados/EmpleadosPage';
 import DepartamentosPage from './pages/departamentos/DepartamentosPage';
 import AcademicoPage from './pages/academico/AcademicoPage';
+import ExpedientePage from './pages/expediente/ExpedientePage';
+import NominaPage from './pages/nomina/NominaPage';
+import ReportesPage from './pages/reportes/ReportesPage';
+
 
 const queryClient = new QueryClient();
 
@@ -35,9 +39,9 @@ function AppRoutes() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/empleados" element={<EmpleadosPage />} />
         <Route path="/academico" element={<AcademicoPage />} />
-        <Route path="/expediente" element={<Box sx={{ p: 2 }}>Página de Expediente - Próximamente</Box>} />
-        <Route path="/nomina" element={<Box sx={{ p: 2 }}>Página de Nómina - Próximamente</Box>} />
-        <Route path="/reportes" element={<Box sx={{ p: 2 }}>Página de Reportes - Próximamente</Box>} />
+        <Route path="/expediente" element={<ExpedientePage />} />
+        <Route path="/nomina" element={<NominaPage />} />
+        <Route path="/reportes" element={<ReportesPage />} />
         <Route path="/departamentos" element={<DepartamentosPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" />} />
