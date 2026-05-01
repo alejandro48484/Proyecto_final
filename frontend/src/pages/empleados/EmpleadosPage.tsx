@@ -166,7 +166,7 @@ export default function EmpleadosPage() {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <TextField label="Nombres" value={formulario.nombres} onChange={(e) => setFormulario({ ...formulario, nombres: e.target.value })} fullWidth />
             <TextField label="Apellidos" value={formulario.apellidos} onChange={(e) => setFormulario({ ...formulario, apellidos: e.target.value })} fullWidth />
-            <TextField label="Fecha de Nacimiento" type="date" value={formulario.fechaNacimiento} onChange={(e) => setFormulario({ ...formulario, fechaNacimiento: e.target.value })} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField label="Fecha de Nacimiento" type="date" value={formulario.fechaNacimiento} onChange={(e) => setFormulario({ ...formulario, fechaNacimiento: e.target.value })} fullWidth slotProps={{ inputLabel: { shrink: true } }} />
             <TextField label="Dirección" value={formulario.direccion} onChange={(e) => setFormulario({ ...formulario, direccion: e.target.value })} fullWidth />
             <TextField label="Teléfono" value={formulario.telefono} onChange={(e) => setFormulario({ ...formulario, telefono: e.target.value })} fullWidth />
             <TextField label="Correo" type="email" value={formulario.correo} onChange={(e) => setFormulario({ ...formulario, correo: e.target.value })} fullWidth />

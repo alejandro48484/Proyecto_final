@@ -171,7 +171,7 @@ export default function AcademicoPage() {
             <TextField label="Título Académico" value={formulario.tituloAcademico} onChange={(e) => setFormulario({ ...formulario, tituloAcademico: e.target.value })} fullWidth />
             <TextField label="Certificación (opcional)" value={formulario.certificacion} onChange={(e) => setFormulario({ ...formulario, certificacion: e.target.value })} fullWidth />
             <TextField label="Institución Educativa" value={formulario.institucionEducativa} onChange={(e) => setFormulario({ ...formulario, institucionEducativa: e.target.value })} fullWidth />
-            <TextField label="Fecha de Graduación" type="date" value={formulario.fechaGraduacion} onChange={(e) => setFormulario({ ...formulario, fechaGraduacion: e.target.value })} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField label="Fecha de Graduación" type="date" value={formulario.fechaGraduacion} onChange={(e) => setFormulario({ ...formulario, fechaGraduacion: e.target.value })} fullWidth slotProps={{ inputLabel: { shrink: true } }} />
           </Box>
         </DialogContent>
         <DialogActions>

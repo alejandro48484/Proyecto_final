@@ -19,7 +19,7 @@ export default function NominaPage() {
   const [dialogoPeriodo, setDialogoPeriodo] = useState(false);
   const [dialogoDetalle, setDialogoDetalle] = useState(false);
   const [dialogoAjuste, setDialogoAjuste] = useState(false);
-  const [detalleAjuste, setDetalleAjuste] = useState<any>(null);
+  const [, setDetalleAjuste] = useState<any>(null);
   const [formPeriodo, setFormPeriodo] = useState({
     tipoPeriodo: 'MENSUAL', fechaInicio: '', fechaFin: '',
   });
@@ -258,8 +258,8 @@ export default function NominaPage() {
               <MenuItem value="MENSUAL">MENSUAL</MenuItem>
               <MenuItem value="QUINCENAL">QUINCENAL</MenuItem>
             </TextField>
-            <TextField label="Fecha Inicio" type="date" value={formPeriodo.fechaInicio} onChange={(e) => setFormPeriodo({ ...formPeriodo, fechaInicio: e.target.value })} fullWidth InputLabelProps={{ shrink: true }} />
-            <TextField label="Fecha Fin" type="date" value={formPeriodo.fechaFin} onChange={(e) => setFormPeriodo({ ...formPeriodo, fechaFin: e.target.value })} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField label="Fecha Inicio" type="date" value={formPeriodo.fechaInicio} onChange={(e) => setFormPeriodo({ ...formPeriodo, fechaInicio: e.target.value })} fullWidth slotProps={{ inputLabel: { shrink: true } }} />
+            <TextField label="Fecha Fin" type="date" value={formPeriodo.fechaFin} onChange={(e) => setFormPeriodo({ ...formPeriodo, fechaFin: e.target.value })} fullWidth slotProps={{ inputLabel: { shrink: true } }} />
           </Box>
         </DialogContent>
         <DialogActions>

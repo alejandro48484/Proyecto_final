@@ -7,7 +7,7 @@ import {
   Chip, Card, CardContent, LinearProgress, Dialog, DialogTitle,
   DialogContent, DialogActions, IconButton
 } from '@mui/material';
-import { CloudUpload, Delete, CheckCircle, Warning, Error as ErrorIcon, Search } from '@mui/icons-material';
+import { CloudUpload, Delete, CheckCircle, Warning, Error as ErrorIcon } from '@mui/icons-material';
 
 const TIPOS_DOCUMENTO = [
   'CONTRATO', 'CERTIFICADO_ESTUDIO', 'DPI',
