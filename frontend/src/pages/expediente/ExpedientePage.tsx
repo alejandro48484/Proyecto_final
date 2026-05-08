@@ -7,7 +7,8 @@ import {
   Chip, Card, CardContent, LinearProgress, Dialog, DialogTitle,
   DialogContent, DialogActions, IconButton
 } from '@mui/material';
-import { CloudUpload, Delete, CheckCircle, Warning, Error as ErrorIcon, Search } from '@mui/icons-material';
+import { CloudUpload, Delete, CheckCircle, Warning, Error as ErrorIcon } from '@mui/icons-material';
+import { useRol } from '../../hooks/useRol';
 
 const TIPOS_DOCUMENTO = [
   'CONTRATO', 'CERTIFICADO_ESTUDIO', 'DPI',
@@ -27,20 +28,22 @@ export default function ExpedientePage() {
   const [tipoDocumento, setTipoDocumento] = useState('CONTRATO');
   const [archivo, setArchivo] = useState<File | null>(null);
   const [subiendo, setSubiendo] = useState(false);
+  const { esAdminOGestor } = useRol();
 
-  const cargarEmpleados = async () => {
-    try {
-      setCargando(true);
-      const res = await cliente.get('/empleados');
-      setEmpleados(res.data);
-    } catch {
-      setError('Error al cargar empleados');
-    } finally {
-      setCargando(false);
-    }
-  };
-
-  useEffect(() => { cargarEmpleados(); }, []);
+  useEffect(() => {
+    const cargar = async () => {
+      try {
+        setCargando(true);
+        const res = await cliente.get('/empleados');
+        setEmpleados(res.data);
+      } catch {
+        setError('Error al cargar empleados');
+      } finally {
+        setCargando(false);
+      }
+    };
+    cargar();
+  }, []);
 
   const cargarExpediente = async (empleadoId: number) => {
     try {
@@ -143,9 +146,11 @@ export default function ExpedientePage() {
                   <Typography variant="h6">Estado del Expediente:</Typography>
                   <Chip label={validacion.estado} color={colorEstado(validacion.estado)} />
                 </Box>
-                <Button variant="contained" startIcon={<CloudUpload />} onClick={() => setDialogoSubir(true)}>
-                  Subir Documento
-                </Button>
+                {esAdminOGestor && (
+                  <Button variant="contained" startIcon={<CloudUpload />} onClick={() => setDialogoSubir(true)}>
+                    Subir Documento
+                  </Button>
+                )}
               </Box>
               <Box sx={{ mb: 1 }}>
                 <Typography variant="body2" color="text.secondary">
@@ -191,7 +196,11 @@ export default function ExpedientePage() {
                       <TableCell>{doc.nombreOriginal}</TableCell>
                       <TableCell>{new Date(doc.fechaCarga).toLocaleDateString()}</TableCell>
                       <TableCell>
-                        <IconButton color="error" onClick={() => eliminarDocumento(doc.id)} size="small"><Delete /></IconButton>
+                        {esAdminOGestor && (
+                          <IconButton color="error" onClick={() => eliminarDocumento(doc.id)} size="small">
+                            <Delete />
+                          </IconButton>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))

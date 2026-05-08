@@ -8,6 +8,7 @@ import {
   Accordion, AccordionSummary, AccordionDetails, Chip
 } from '@mui/material';
 import { Add, Edit, Delete, ExpandMore, School } from '@mui/icons-material';
+import { useRol } from '../../hooks/useRol';
 
 interface InfoAcademica {
   id: number;
@@ -29,6 +30,7 @@ export default function AcademicoPage() {
     empleadoId: 0, tituloAcademico: '', certificacion: '',
     institucionEducativa: '', fechaGraduacion: '',
   });
+  const { esAdminOGestor } = useRol();
 
   const cargarDatos = async () => {
     try {
@@ -109,7 +111,7 @@ export default function AcademicoPage() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Información Académica</Typography>
-        <Button variant="contained" startIcon={<Add />} onClick={abrirCrear}>Nuevo Registro</Button>
+        {esAdminOGestor && <Button variant="contained" startIcon={<Add />} onClick={abrirCrear}>Nuevo Registro</Button>}
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
@@ -148,8 +150,8 @@ export default function AcademicoPage() {
                         <TableCell>{reg.institucionEducativa}</TableCell>
                         <TableCell>{reg.fechaGraduacion ? new Date(reg.fechaGraduacion).toLocaleDateString() : '-'}</TableCell>
                         <TableCell>
-                          <IconButton color="primary" onClick={() => abrirEditar(reg)} size="small"><Edit /></IconButton>
-                          <IconButton color="error" onClick={() => eliminar(reg.id)} size="small"><Delete /></IconButton>
+                          {esAdminOGestor && <IconButton color="primary" onClick={() => abrirEditar(reg)} size="small"><Edit /></IconButton>}
+                          {esAdminOGestor && <IconButton color="error" onClick={() => eliminar(reg.id)} size="small"><Delete /></IconButton>}
                         </TableCell>
                       </TableRow>
                     ))}
