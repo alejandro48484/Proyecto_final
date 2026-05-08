@@ -7,6 +7,7 @@ import {
   Tabs, Tab, IconButton, Card, CardContent
 } from '@mui/material';
 import { Add, Lock, Calculate, Edit } from '@mui/icons-material';
+import { useRol } from '../../hooks/useRol';
 
 export default function NominaPage() {
   const [tab, setTab] = useState(0);
@@ -29,6 +30,7 @@ export default function NominaPage() {
   const [formAjuste, setFormAjuste] = useState({
     detalleNominaId: 0, campo: 'horasExtra', valorNuevo: 0, motivo: '',
   });
+  const { esAdminOGestor, esAdmin } = useRol();
 
   const cargarDatos = async () => {
     try {
@@ -138,7 +140,7 @@ export default function NominaPage() {
       {tab === 0 && (
         <>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-            <Button variant="contained" startIcon={<Add />} onClick={() => setDialogoPeriodo(true)}>Nuevo Período</Button>
+            {esAdminOGestor && <Button variant="contained" startIcon={<Add />} onClick={() => setDialogoPeriodo(true)}>Nuevo Período</Button>}
           </Box>
           <TableContainer component={Paper}>
             <Table>
@@ -163,7 +165,7 @@ export default function NominaPage() {
                     <TableCell><Chip label={per.estado} color={per.estado === 'ABIERTO' ? 'success' : 'default'} size="small" /></TableCell>
                     <TableCell>{per.detalles?.length || 0}</TableCell>
                     <TableCell>
-                      {per.estado === 'ABIERTO' && (
+                      {per.estado === 'ABIERTO' && esAdmin && (
                         <IconButton color="warning" onClick={(e) => { e.stopPropagation(); cerrarPeriodo(per.id); }} size="small" title="Cerrar período">
                           <Lock />
                         </IconButton>
@@ -194,7 +196,7 @@ export default function NominaPage() {
                       </Typography>
                       <Chip label={periodoSeleccionado.estado} color={periodoSeleccionado.estado === 'ABIERTO' ? 'success' : 'default'} size="small" sx={{ mt: 1 }} />
                     </Box>
-                    {periodoSeleccionado.estado === 'ABIERTO' && (
+                    {periodoSeleccionado.estado === 'ABIERTO' && esAdminOGestor && (
                       <Button variant="contained" startIcon={<Add />} onClick={() => {
                         setFormDetalle({ ...formDetalle, periodoNominaId: periodoSeleccionado.id });
                         setDialogoDetalle(true);
@@ -233,7 +235,7 @@ export default function NominaPage() {
                         <TableCell align="right">Q{Number(det.irtra).toFixed(2)}</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 'bold' }}>Q{Number(det.salarioNeto).toFixed(2)}</TableCell>
                         <TableCell>
-                          {periodoSeleccionado.estado === 'ABIERTO' && (
+                          {periodoSeleccionado.estado === 'ABIERTO' && esAdminOGestor && (
                             <>
                               <IconButton color="primary" onClick={() => recalcular(det.id)} size="small" title="Recalcular"><Calculate /></IconButton>
                               <IconButton color="warning" onClick={() => abrirAjuste(det)} size="small" title="Ajustar"><Edit /></IconButton>

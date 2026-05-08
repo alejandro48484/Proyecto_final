@@ -18,18 +18,11 @@ import {
   Logout as LogoutIcon,
   AccountCircle as AccountIcon
 } from '@mui/icons-material';
+import { useRol } from '../hooks/useRol';
 
 const ANCHO_MENU = 260;
 
-const menuItems = [
-  { texto: 'Dashboard', icono: <DashboardIcon />, ruta: '/dashboard' },
-  { texto: 'Empleados', icono: <PeopleIcon />, ruta: '/empleados' },
-  { texto: 'Académico', icono: <SchoolIcon />, ruta: '/academico' },
-  { texto: 'Expediente', icono: <FolderIcon />, ruta: '/expediente' },
-  { texto: 'Nómina', icono: <MoneyIcon />, ruta: '/nomina' },
-  { texto: 'Reportes', icono: <ReportIcon />, ruta: '/reportes' },
-  { texto: 'Departamentos', icono: <BusinessIcon />, ruta: '/departamentos' },
-];
+
 
 export default function Layout() {
   const { usuario, logout } = useAuth();
@@ -37,6 +30,18 @@ export default function Layout() {
   const location = useLocation();
   const [menuAbierto, setMenuAbierto] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const { esAdminOGestor, esAdmin } = useRol();
+
+  const menuItems = [
+  { texto: 'Dashboard', icono: <DashboardIcon />, ruta: '/dashboard', visible: true },
+  { texto: 'Empleados', icono: <PeopleIcon />, ruta: '/empleados', visible: true },
+  { texto: 'Académico', icono: <SchoolIcon />, ruta: '/academico', visible: esAdminOGestor },
+  { texto: 'Expediente', icono: <FolderIcon />, ruta: '/expediente', visible: esAdminOGestor },
+  { texto: 'Nómina', icono: <MoneyIcon />, ruta: '/nomina', visible: esAdminOGestor },
+  { texto: 'Reportes', icono: <ReportIcon />, ruta: '/reportes', visible: esAdminOGestor },
+  { texto: 'Departamentos', icono: <BusinessIcon />, ruta: '/departamentos', visible: esAdmin },
+];
+
 
   const handleMenuUsuario = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -129,30 +134,30 @@ export default function Layout() {
         </Box>
         <Divider sx={{ borderColor: '#333' }} />
         <List>
-          {menuItems.map((item) => (
-            <ListItem key={item.ruta} disablePadding>
-              <ListItemButton
-                onClick={() => navigate(item.ruta)}
-                selected={location.pathname === item.ruta}
-                sx={{
-                  '&.Mui-selected': {
-                    backgroundColor: '#2E5090',
-                    '&:hover': { backgroundColor: '#3a62a8' },
-                  },
-                  '&:hover': { backgroundColor: '#16213e' },
-                  color: 'white',
-                  mx: 1,
-                  borderRadius: 1,
-                  mb: 0.5,
-                }}
-              >
-                <ListItemIcon sx={{ color: location.pathname === item.ruta ? '#ED7D31' : '#888', minWidth: 40 }}>
-                  {item.icono}
-                </ListItemIcon>
-                <ListItemText primary={item.texto} />
-              </ListItemButton>
-            </ListItem>
-          ))}
+          {menuItems.filter(item => item.visible).map((item) => (
+  <ListItem key={item.ruta} disablePadding>
+    <ListItemButton
+      onClick={() => navigate(item.ruta)}
+      selected={location.pathname === item.ruta}
+      sx={{
+        '&.Mui-selected': {
+          backgroundColor: '#2E5090',
+          '&:hover': { backgroundColor: '#3a62a8' },
+        },
+        '&:hover': { backgroundColor: '#16213e' },
+        color: 'white',
+        mx: 1,
+        borderRadius: 1,
+        mb: 0.5,
+      }}
+    >
+      <ListItemIcon sx={{ color: location.pathname === item.ruta ? '#ED7D31' : '#888', minWidth: 40 }}>
+        {item.icono}
+      </ListItemIcon>
+      <ListItemText primary={item.texto} />
+    </ListItemButton>
+  </ListItem>
+))}
         </List>
       </Drawer>
 

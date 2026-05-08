@@ -7,6 +7,7 @@ import {
   DialogContent, DialogActions, TextField, MenuItem, Alert, CircularProgress
 } from '@mui/material';
 import { Add, Edit, Delete, SwapHoriz } from '@mui/icons-material';
+import { useRol } from '../../hooks/useRol';
 
 export default function EmpleadosPage() {
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
@@ -23,6 +24,7 @@ export default function EmpleadosPage() {
     telefono: '', correo: '', numeroDpi: '', salarioBase: 0,
     cargo: '', departamentoId: 0, estadoLaboral: 'ACTIVO',
   });
+  const { esAdmin, esAdminOGestor } = useRol();
 
   const cargarDatos = async () => {
     try {
@@ -120,7 +122,7 @@ export default function EmpleadosPage() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Gestión de Empleados</Typography>
-        <Button variant="contained" startIcon={<Add />} onClick={abrirCrear}>Nuevo Empleado</Button>
+        {esAdminOGestor && <Button variant="contained" startIcon={<Add />} onClick={abrirCrear}>Nuevo Empleado</Button>}
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
@@ -150,9 +152,11 @@ export default function EmpleadosPage() {
                 <TableCell>Q{Number(emp.salarioBase).toFixed(2)}</TableCell>
                 <TableCell><Chip label={emp.estadoLaboral} color={colorEstado(emp.estadoLaboral)} size="small" /></TableCell>
                 <TableCell>
-                  <IconButton color="primary" onClick={() => abrirEditar(emp)} size="small"><Edit /></IconButton>
-                  <IconButton color="error" onClick={() => eliminar(emp.id)} size="small"><Delete /></IconButton>
-                  <IconButton color="warning" onClick={() => abrirCambiarEstado(emp)} size="small"><SwapHoriz /></IconButton>
+                  <TableCell>
+                    {esAdminOGestor && <IconButton color="primary" onClick={() => abrirEditar(emp)} size="small"><Edit /></IconButton>}
+                    {esAdmin && <IconButton color="error" onClick={() => eliminar(emp.id)} size="small"><Delete /></IconButton>}
+                    {esAdminOGestor && <IconButton color="warning" onClick={() => abrirCambiarEstado(emp)} size="small"><SwapHoriz /></IconButton>}
+                  </TableCell>
                 </TableCell>
               </TableRow>
             ))}

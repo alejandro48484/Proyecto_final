@@ -7,6 +7,7 @@ import {
   DialogContent, DialogActions, TextField, Alert, CircularProgress, Chip
 } from '@mui/material';
 import { Add, Edit, Delete } from '@mui/icons-material';
+import { useRol } from '../../hooks/useRol';
 
 export default function DepartamentosPage() {
   const [departamentos, setDepartamentos] = useState<any[]>([]);
@@ -15,6 +16,7 @@ export default function DepartamentosPage() {
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
   const [editando, setEditando] = useState<Departamento | null>(null);
   const [formulario, setFormulario] = useState({ nombre: '', descripcion: '' });
+  const { esAdmin } = useRol();
 
   const cargarDatos = async () => {
     try {
@@ -73,7 +75,7 @@ export default function DepartamentosPage() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Gestión de Departamentos</Typography>
-        <Button variant="contained" startIcon={<Add />} onClick={abrirCrear}>Nuevo Departamento</Button>
+        {esAdmin && <Button variant="contained" startIcon={<Add />} onClick={abrirCrear}>Nuevo Departamento</Button>}
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
@@ -97,8 +99,8 @@ export default function DepartamentosPage() {
                 <TableCell>{dep.descripcion || '-'}</TableCell>
                 <TableCell><Chip label={dep.empleados?.length || 0} color="primary" size="small" /></TableCell>
                 <TableCell>
-                  <IconButton color="primary" onClick={() => abrirEditar(dep)} size="small"><Edit /></IconButton>
-                  <IconButton color="error" onClick={() => eliminar(dep.id)} size="small"><Delete /></IconButton>
+                  {esAdmin && <IconButton color="primary" onClick={() => abrirEditar(dep)} size="small"><Edit /></IconButton>}
+                  {esAdmin && <IconButton color="error" onClick={() => eliminar(dep.id)} size="small"><Delete /></IconButton>}
                 </TableCell>
               </TableRow>
             ))}
