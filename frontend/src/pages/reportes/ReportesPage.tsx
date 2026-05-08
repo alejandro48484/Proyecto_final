@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import cliente from '../../api/cliente';
 import {
-  Box, Typography, Card, CardContent, Button, TextField, MenuItem,
+  Box, Typography, Card, CardContent, Button, TextField,
   Alert, CircularProgress, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Chip, Tabs, Tab, LinearProgress
 } from '@mui/material';
