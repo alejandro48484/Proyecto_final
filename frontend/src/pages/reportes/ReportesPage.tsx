@@ -3,7 +3,7 @@ import cliente from '../../api/cliente';
 import {
   Box, Typography, Card, CardContent, Button, TextField,
   Alert, CircularProgress, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Paper, Chip, Tabs, Tab, LinearProgress
+  TableHead, TableRow, Paper, Tabs, Tab, LinearProgress
 } from '@mui/material';
 import { Assessment, People, School, CheckCircle, Download } from '@mui/icons-material';
 // @ts-ignore
@@ -77,12 +77,12 @@ export default function ReportesPage() {
     }
   };
 
-  const descargarPDF = (ref: React.RefObject<HTMLDivElement>, nombreArchivo: string) => {
+  const descargarPDF = (ref: React.RefObject<HTMLDivElement | null>, nombreArchivo: string) => {
     if (!ref.current) return;
     const opciones = {
       margin: 10,
       filename: `${nombreArchivo}_${new Date().toLocaleDateString('es-GT').replace(/\//g, '-')}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
+      image: { type: 'jpeg' as const, quality: 0.98 },
       html2canvas: { scale: 2 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
     };
