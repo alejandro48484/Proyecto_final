@@ -79,12 +79,12 @@ export default function ReportesPage() {
 
   const descargarPDF = (ref: React.RefObject<HTMLDivElement | null>, nombreArchivo: string) => {
     if (!ref.current) return;
-    const opciones = {
+   const opciones = {
       margin: 10,
       filename: `${nombreArchivo}_${new Date().toLocaleDateString('es-GT').replace(/\//g, '-')}.pdf`,
       image: { type: 'jpeg' as const, quality: 0.98 },
       html2canvas: { scale: 2 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+      jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'landscape' as const },
     };
     html2pdf().set(opciones).from(ref.current).save();
   };
