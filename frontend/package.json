@@ -19,6 +19,7 @@
     "axios": "^1.15.2",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "html2pdf.js": "^0.14.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-hook-form": "^7.73.1",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/html2pdf.js": "^0.10.0",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
