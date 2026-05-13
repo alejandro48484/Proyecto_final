@@ -12,11 +12,10 @@ import ExpedientePage from './pages/expediente/ExpedientePage';
 import NominaPage from './pages/nomina/NominaPage';
 import ReportesPage from './pages/reportes/ReportesPage';
 
-
 const queryClient = new QueryClient();
 
-function RutaProtegida({ children }: { children: React.ReactNode }) {
-  const { token, cargando } = useAuth();
+function RutaProtegida({ children, rolesPermitidos }: { children: React.ReactNode, rolesPermitidos?: string[] }) {
+  const { token, cargando, usuario } = useAuth();
 
   if (cargando) {
     return (
@@ -26,7 +25,13 @@ function RutaProtegida({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return token ? <>{children}</> : <Navigate to="/login" />;
+  if (!token) return <Navigate to="/login" />;
+
+  if (rolesPermitidos && usuario && !rolesPermitidos.includes(usuario.rol)) {
+    return <Navigate to="/dashboard" />;
+  }
+
+  return <>{children}</>;
 }
 
 function AppRoutes() {
@@ -38,11 +43,31 @@ function AppRoutes() {
       <Route element={<RutaProtegida><Layout /></RutaProtegida>}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/empleados" element={<EmpleadosPage />} />
-        <Route path="/academico" element={<AcademicoPage />} />
-        <Route path="/expediente" element={<ExpedientePage />} />
-        <Route path="/nomina" element={<NominaPage />} />
-        <Route path="/reportes" element={<ReportesPage />} />
-        <Route path="/departamentos" element={<DepartamentosPage />} />
+        <Route path="/academico" element={
+          <RutaProtegida rolesPermitidos={['ADMINISTRADOR', 'GESTOR_RRHH']}>
+            <AcademicoPage />
+          </RutaProtegida>
+        } />
+        <Route path="/expediente" element={
+          <RutaProtegida rolesPermitidos={['ADMINISTRADOR', 'GESTOR_RRHH']}>
+            <ExpedientePage />
+          </RutaProtegida>
+        } />
+        <Route path="/nomina" element={
+          <RutaProtegida rolesPermitidos={['ADMINISTRADOR', 'GESTOR_RRHH']}>
+            <NominaPage />
+          </RutaProtegida>
+        } />
+        <Route path="/reportes" element={
+          <RutaProtegida rolesPermitidos={['ADMINISTRADOR', 'GESTOR_RRHH']}>
+            <ReportesPage />
+          </RutaProtegida>
+        } />
+        <Route path="/departamentos" element={
+          <RutaProtegida rolesPermitidos={['ADMINISTRADOR']}>
+            <DepartamentosPage />
+          </RutaProtegida>
+        } />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" />} />
     </Routes>
