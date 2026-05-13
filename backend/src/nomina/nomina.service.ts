@@ -11,15 +11,42 @@ export class NominaService {
   // ==================== PERÍODOS ====================
 
   async crearPeriodo(dto: CrearPeriodoDto) {
-    if (new Date(dto.fechaFin) < new Date(dto.fechaInicio)) {
-      throw new BadRequestException('La fecha fin no puede ser anterior a la fecha inicio');
+    let fechaInicio: Date;
+    let fechaFin: Date;
+
+    if (dto.tipoPeriodo === 'MENSUAL') {
+      fechaInicio = new Date(dto.anio, dto.mes - 1, 1);
+      fechaFin = new Date(dto.anio, dto.mes, 0);
+    } else {
+      if (!dto.quincena) {
+        throw new BadRequestException('Debe especificar la quincena (1 o 2) para períodos quincenales');
+      }
+      if (dto.quincena === 1) {
+        fechaInicio = new Date(dto.anio, dto.mes - 1, 1);
+        fechaFin = new Date(dto.anio, dto.mes - 1, 15);
+      } else {
+        fechaInicio = new Date(dto.anio, dto.mes - 1, 16);
+        fechaFin = new Date(dto.anio, dto.mes, 0);
+      }
+    }
+
+    const periodoExistente = await this.prisma.periodoNomina.findFirst({
+      where: {
+        tipoPeriodo: dto.tipoPeriodo,
+        fechaInicio,
+        fechaFin,
+      },
+    });
+
+    if (periodoExistente) {
+      throw new BadRequestException('Ya existe un período de nómina para ese mes y tipo');
     }
 
     return this.prisma.periodoNomina.create({
       data: {
         tipoPeriodo: dto.tipoPeriodo,
-        fechaInicio: new Date(dto.fechaInicio),
-        fechaFin: new Date(dto.fechaFin),
+        fechaInicio,
+        fechaFin,
         estado: 'ABIERTO',
       },
     });
@@ -98,7 +125,26 @@ export class NominaService {
       throw new BadRequestException('Este empleado ya tiene un detalle en este período');
     }
 
-    const salarioBase = Number(empleado.salarioBase);
+    const fechaInicioPeriodo = new Date(periodo.fechaInicio);
+    const fechaFinPeriodo = new Date(periodo.fechaFin);
+    const diasTotalesPeriodo = Math.ceil(
+      (fechaFinPeriodo.getTime() - fechaInicioPeriodo.getTime()) / (1000 * 60 * 60 * 24)
+    ) + 1;
+
+    const fechaContratacion = empleado.creadoEn ? new Date(empleado.creadoEn) : fechaInicioPeriodo;
+    let diasTrabajados = diasTotalesPeriodo;
+
+    if (fechaContratacion > fechaInicioPeriodo && fechaContratacion <= fechaFinPeriodo) {
+      diasTrabajados = Math.ceil(
+        (fechaFinPeriodo.getTime() - fechaContratacion.getTime()) / (1000 * 60 * 60 * 24)
+      ) + 1;
+    }
+
+    const salarioCompleto = Number(empleado.salarioBase);
+    const salarioBase = diasTrabajados < diasTotalesPeriodo
+      ? Math.round((salarioCompleto / diasTotalesPeriodo) * diasTrabajados * 100) / 100
+      : salarioCompleto;
+
     const horasExtra = dto.horasExtra || 0;
     const bonificaciones = dto.bonificaciones || 0;
     const deducciones = dto.deducciones || 0;
