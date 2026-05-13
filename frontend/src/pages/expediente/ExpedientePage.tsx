@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import cliente from '../../api/cliente';
 import type { Empleado } from '../../types';
@@ -7,7 +8,7 @@ import {
   Chip, Card, CardContent, LinearProgress, Dialog, DialogTitle,
   DialogContent, DialogActions, IconButton
 } from '@mui/material';
-import { CloudUpload, Delete, CheckCircle, Warning, Error as ErrorIcon } from '@mui/icons-material';
+import { CloudUpload, Delete, CheckCircle, Warning, Error as ErrorIcon, Visibility } from '@mui/icons-material';
 import { useRol } from '../../hooks/useRol';
 
 const TIPOS_DOCUMENTO = [
@@ -66,6 +67,14 @@ export default function ExpedientePage() {
 
   const subirDocumento = async () => {
     if (!archivo || !empleadoSeleccionado) return;
+
+    const extensionesPermitidas = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
+    const extension = '.' + archivo.name.split('.').pop()?.toLowerCase();
+    if (!extensionesPermitidas.includes(extension)) {
+      setError('Formato no permitido. Solo se aceptan: PDF, Word (DOC, DOCX) e imágenes (JPG, PNG)');
+      return;
+    }
+
     try {
       setSubiendo(true);
       setError('');
@@ -96,6 +105,10 @@ export default function ExpedientePage() {
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al eliminar');
     }
+  };
+
+  const verDocumento = (rutaArchivo: string) => {
+    window.open(`https://proyecto-final-yns1.onrender.com${rutaArchivo}`, '_blank');
   };
 
   const colorEstado = (estado: string) => {
@@ -144,7 +157,7 @@ export default function ExpedientePage() {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   {iconoEstado(validacion.estado)}
                   <Typography variant="h6">Estado del Expediente:</Typography>
-                  <Chip label={validacion.estado} color={colorEstado(validacion.estado)} />
+                  <Chip label={validacion.estado} color={colorEstado(validacion.estado) as any} />
                 </Box>
                 {esAdminOGestor && (
                   <Button variant="contained" startIcon={<CloudUpload />} onClick={() => setDialogoSubir(true)}>
@@ -194,8 +207,11 @@ export default function ExpedientePage() {
                       <TableCell>{doc.id}</TableCell>
                       <TableCell><Chip label={doc.tipoDocumento.replace(/_/g, ' ')} size="small" /></TableCell>
                       <TableCell>{doc.nombreOriginal}</TableCell>
-                      <TableCell>{new Date(doc.fechaCarga).toLocaleDateString()}</TableCell>
+                      <TableCell>{new Date(doc.fechaCarga).toLocaleDateString('es-GT')}</TableCell>
                       <TableCell>
+                        <IconButton color="primary" size="small" title="Ver documento" onClick={() => verDocumento(doc.rutaArchivo)}>
+                          <Visibility />
+                        </IconButton>
                         {esAdminOGestor && (
                           <IconButton color="error" onClick={() => eliminarDocumento(doc.id)} size="small">
                             <Delete />
@@ -215,6 +231,9 @@ export default function ExpedientePage() {
         <DialogTitle>Subir Documento</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <Alert severity="info">
+              Formatos permitidos: PDF, Word (DOC, DOCX) e imágenes (JPG, PNG). Tamaño máximo: 5MB.
+            </Alert>
             <TextField select label="Tipo de Documento" value={tipoDocumento} onChange={(e) => setTipoDocumento(e.target.value)} fullWidth>
               {TIPOS_DOCUMENTO.map((tipo) => (
                 <MenuItem key={tipo} value={tipo}>{tipo.replace(/_/g, ' ')}</MenuItem>
@@ -222,7 +241,7 @@ export default function ExpedientePage() {
             </TextField>
             <Button variant="outlined" component="label" startIcon={<CloudUpload />}>
               {archivo ? archivo.name : 'Seleccionar Archivo'}
-              <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+              <input type="file" hidden accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                 onChange={(e) => setArchivo(e.target.files?.[0] || null)} />
             </Button>
             {archivo && (
