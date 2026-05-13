@@ -98,7 +98,27 @@ export class NominaService {
       throw new BadRequestException('Este empleado ya tiene un detalle en este período');
     }
 
-    const salarioBase = Number(empleado.salarioBase);
+    // Calcular días trabajados proporcionalmente
+    const fechaInicioPeriodo = new Date(periodo.fechaInicio);
+    const fechaFinPeriodo = new Date(periodo.fechaFin);
+    const diasTotalesPeriodo = Math.ceil(
+      (fechaFinPeriodo.getTime() - fechaInicioPeriodo.getTime()) / (1000 * 60 * 60 * 24)
+    ) + 1;
+
+    const fechaContratacion = empleado.creadoEn ? new Date(empleado.creadoEn) : fechaInicioPeriodo;
+    let diasTrabajados = diasTotalesPeriodo;
+
+    if (fechaContratacion > fechaInicioPeriodo && fechaContratacion <= fechaFinPeriodo) {
+      diasTrabajados = Math.ceil(
+        (fechaFinPeriodo.getTime() - fechaContratacion.getTime()) / (1000 * 60 * 60 * 24)
+      ) + 1;
+    }
+
+    const salarioCompleto = Number(empleado.salarioBase);
+    const salarioBase = diasTrabajados < diasTotalesPeriodo
+      ? Math.round((salarioCompleto / diasTotalesPeriodo) * diasTrabajados * 100) / 100
+      : salarioCompleto;
+
     const horasExtra = dto.horasExtra || 0;
     const bonificaciones = dto.bonificaciones || 0;
     const deducciones = dto.deducciones || 0;
