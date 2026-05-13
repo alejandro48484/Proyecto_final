@@ -238,12 +238,12 @@ export default function EmpleadosPage() {
 
             <TextField label="Número de DPI (13 dígitos)" value={formulario.numeroDpi}
               onChange={(e) => setFormulario({ ...formulario, numeroDpi: e.target.value })}
-              fullWidth inputProps={{ maxLength: 13 }}
+              fullWidth slotProps={{ htmlInput: { maxLength: 13 } }}
               error={!!errores.numeroDpi} helperText={errores.numeroDpi} />
 
             <TextField label="Salario Base (Q)" type="number" value={formulario.salarioBase}
               onChange={(e) => setFormulario({ ...formulario, salarioBase: Number(e.target.value) })}
-              fullWidth inputProps={{ min: 0 }}
+              fullWidth slotProps={{ htmlInput: { min: 0 } }}
               error={!!errores.salarioBase} helperText={errores.salarioBase} />
 
             <TextField label="Cargo" value={formulario.cargo}
