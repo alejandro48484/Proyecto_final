@@ -31,11 +31,7 @@ export class NominaService {
     }
 
     const periodoExistente = await this.prisma.periodoNomina.findFirst({
-      where: {
-        tipoPeriodo: dto.tipoPeriodo,
-        fechaInicio,
-        fechaFin,
-      },
+      where: { tipoPeriodo: dto.tipoPeriodo, fechaInicio, fechaFin },
     });
 
     if (periodoExistente) {
@@ -86,6 +82,19 @@ export class NominaService {
   }
 
   // ==================== DETALLES ====================
+
+  private calcularISR(salarioBase: number): number {
+    const salarioAnual = salarioBase * 12;
+    if (salarioAnual <= 48000) return 0;
+    const baseImponible = salarioAnual - 48000;
+    let isrAnual = 0;
+    if (baseImponible <= 300000) {
+      isrAnual = baseImponible * 0.05;
+    } else {
+      isrAnual = 15000 + (baseImponible - 300000) * 0.07;
+    }
+    return Math.round((isrAnual / 12) * 100) / 100;
+  }
 
   async agregarDetalle(dto: CrearDetalleDto) {
     const periodo = await this.prisma.periodoNomina.findUnique({
@@ -147,10 +156,14 @@ export class NominaService {
 
     const horasExtra = dto.horasExtra || 0;
     const bonificaciones = dto.bonificaciones || 0;
-    const deducciones = dto.deducciones || 0;
-    const igss = salarioBase * 0.0483;
-    const irtra = salarioBase * 0.01;
-    const salarioNeto = salarioBase + horasExtra + bonificaciones - deducciones - igss - irtra;
+    const deduccionesAdicionales = dto.deducciones || 0;
+    const igss = Math.round(salarioBase * 0.0483 * 100) / 100;
+    const irtra = Math.round(salarioBase * 0.01 * 100) / 100;
+    const isr = this.calcularISR(salarioBase);
+    const deducciones = Math.round((deduccionesAdicionales + isr) * 100) / 100;
+    const salarioNeto = Math.round(
+      (salarioBase + horasExtra + bonificaciones - deducciones - igss - irtra) * 100
+    ) / 100;
 
     return this.prisma.detalleNomina.create({
       data: {
@@ -160,9 +173,9 @@ export class NominaService {
         horasExtra,
         bonificaciones,
         deducciones,
-        igss: Math.round(igss * 100) / 100,
-        irtra: Math.round(irtra * 100) / 100,
-        salarioNeto: Math.round(salarioNeto * 100) / 100,
+        igss,
+        irtra,
+        salarioNeto,
       },
       include: { empleado: true },
     });
@@ -186,16 +199,20 @@ export class NominaService {
     const horasExtra = Number(detalle.horasExtra);
     const bonificaciones = Number(detalle.bonificaciones);
     const deducciones = Number(detalle.deducciones);
-    const igss = salarioBase * 0.0483;
-    const irtra = salarioBase * 0.01;
-    const salarioNeto = salarioBase + horasExtra + bonificaciones - deducciones - igss - irtra;
+    const igss = Math.round(salarioBase * 0.0483 * 100) / 100;
+    const irtra = Math.round(salarioBase * 0.01 * 100) / 100;
+    const isr = this.calcularISR(salarioBase);
+    const deduccionesTotal = Math.round((deducciones + isr) * 100) / 100;
+    const salarioNeto = Math.round(
+      (salarioBase + horasExtra + bonificaciones - deduccionesTotal - igss - irtra) * 100
+    ) / 100;
 
     return this.prisma.detalleNomina.update({
       where: { id },
       data: {
-        igss: Math.round(igss * 100) / 100,
-        irtra: Math.round(irtra * 100) / 100,
-        salarioNeto: Math.round(salarioNeto * 100) / 100,
+        igss,
+        irtra,
+        salarioNeto,
       },
       include: { empleado: true },
     });
