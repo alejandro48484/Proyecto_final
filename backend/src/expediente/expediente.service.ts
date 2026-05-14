@@ -1,10 +1,23 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TipoDocumento } from '@prisma/client';
+import { extname } from 'path';
+import * as CryptoJS from 'crypto-js';
+
+const ENCRYPTION_KEY = process.env.JWT_SECRET || 'clave-encriptacion-documentos-2026';
 
 @Injectable()
 export class ExpedienteService {
   constructor(private prisma: PrismaService) {}
+
+  desencriptarRuta(rutaEncriptada: string): string {
+    try {
+      const bytes = CryptoJS.AES.decrypt(rutaEncriptada, ENCRYPTION_KEY);
+      return bytes.toString(CryptoJS.enc.Utf8);
+    } catch {
+      return rutaEncriptada;
+    }
+  }
 
   async subirDocumento(
     empleadoId: number,
@@ -12,6 +25,14 @@ export class ExpedienteService {
     archivo: Express.Multer.File,
     usuarioId: number,
   ) {
+    const tiposPermitidos = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
+    const ext = extname(archivo.originalname).toLowerCase();
+    if (!tiposPermitidos.includes(ext)) {
+      throw new BadRequestException(
+        'Tipo de archivo no permitido. Solo se aceptan: PDF, Word (DOC, DOCX) e imágenes (JPG, JPEG, PNG)'
+      );
+    }
+
     const empleado = await this.prisma.empleado.findUnique({
       where: { id: empleadoId },
     });
@@ -20,12 +41,17 @@ export class ExpedienteService {
       throw new NotFoundException(`Empleado con ID ${empleadoId} no encontrado`);
     }
 
+    const rutaEncriptada = CryptoJS.AES.encrypt(
+      `/uploads/${archivo.filename}`,
+      ENCRYPTION_KEY
+    ).toString();
+
     return this.prisma.documento.create({
       data: {
         empleadoId,
         tipoDocumento,
         nombreOriginal: archivo.originalname,
-        rutaArchivo: `/uploads/${archivo.filename}`,
+        rutaArchivo: rutaEncriptada,
         subidoPorUsuarioId: usuarioId,
       },
     });
@@ -40,10 +66,15 @@ export class ExpedienteService {
       throw new NotFoundException(`Empleado con ID ${empleadoId} no encontrado`);
     }
 
-    return this.prisma.documento.findMany({
+    const documentos = await this.prisma.documento.findMany({
       where: { empleadoId },
       orderBy: { fechaCarga: 'desc' },
     });
+
+    return documentos.map((doc) => ({
+      ...doc,
+      rutaArchivo: this.desencriptarRuta(doc.rutaArchivo),
+    }));
   }
 
   async eliminarDocumento(id: number) {
@@ -101,7 +132,10 @@ export class ExpedienteService {
       totalFaltantes: faltantes.length,
       documentosCompletados: completados,
       documentosFaltantes: faltantes,
-      documentosSubidos: documentosEmpleado,
+      documentosSubidos: documentosEmpleado.map((doc) => ({
+        ...doc,
+        rutaArchivo: this.desencriptarRuta(doc.rutaArchivo),
+      })),
     };
   }
 
