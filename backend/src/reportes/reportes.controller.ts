@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, UseGuards, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ReportesService } from './reportes.service';
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
@@ -39,4 +39,27 @@ export class ReportesController {
   reporteCumplimiento() {
     return this.reportesService.reporteCumplimiento();
   }
+  
+  @Get('nomina-departamento/:periodoId')
+@ApiOperation({ summary: 'Reporte de nómina por departamento o general' })
+@Roles('ADMINISTRADOR', 'GESTOR_RRHH')
+reporteNominaPorDepartamento(
+  @Param('periodoId', ParseIntPipe) periodoId: number,
+  @Query('departamentoId') departamentoId?: string,
+) {
+  return this.reportesService.reporteNominaPorDepartamento(
+    periodoId,
+    departamentoId ? parseInt(departamentoId) : undefined,
+  );
+}
+
+@Get('voucher/:periodoId/:empleadoId')
+@ApiOperation({ summary: 'Voucher individual de nómina por empleado' })
+@Roles('ADMINISTRADOR', 'GESTOR_RRHH')
+reporteVoucherEmpleado(
+  @Param('periodoId', ParseIntPipe) periodoId: number,
+  @Param('empleadoId', ParseIntPipe) empleadoId: number,
+) {
+  return this.reportesService.reporteNominaVoucherEmpleado(periodoId, empleadoId);
+}
 }
