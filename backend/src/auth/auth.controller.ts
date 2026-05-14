@@ -6,18 +6,21 @@ import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guard/jwt-auth.guard';
 import { RolesGuard } from './guard/roles.guard';
 import { Roles } from './decorator/roles.decorator';
+import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('Autenticación')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Throttle({ short: { ttl: 60000, limit: 5 }, long: { ttl: 3600000, limit: 20 } })
   @Post('login')
   @ApiOperation({ summary: 'Iniciar sesión' })
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 
+  @Throttle({ short: { ttl: 60000, limit: 3 }, long: { ttl: 3600000, limit: 10 } })
   @Post('registro')
   @ApiOperation({ summary: 'Registrar nuevo usuario (solo Administradores)' })
   @ApiBearerAuth()
