@@ -1,35 +1,44 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TipoDocumento } from '@prisma/client';
+import { extname } from 'path';
 
 @Injectable()
 export class ExpedienteService {
   constructor(private prisma: PrismaService) {}
 
   async subirDocumento(
-    empleadoId: number,
-    tipoDocumento: TipoDocumento,
-    archivo: Express.Multer.File,
-    usuarioId: number,
-  ) {
-    const empleado = await this.prisma.empleado.findUnique({
-      where: { id: empleadoId },
-    });
-
-    if (!empleado) {
-      throw new NotFoundException(`Empleado con ID ${empleadoId} no encontrado`);
-    }
-
-    return this.prisma.documento.create({
-      data: {
-        empleadoId,
-        tipoDocumento,
-        nombreOriginal: archivo.originalname,
-        rutaArchivo: `/uploads/${archivo.filename}`,
-        subidoPorUsuarioId: usuarioId,
-      },
-    });
+  empleadoId: number,
+  tipoDocumento: TipoDocumento,
+  archivo: Express.Multer.File,
+  usuarioId: number,
+) {
+  const tiposPermitidos = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
+  const ext = extname(archivo.originalname).toLowerCase();
+  if (!tiposPermitidos.includes(ext)) {
+    throw new BadRequestException(
+      'Tipo de archivo no permitido. Solo se aceptan: PDF, Word (DOC, DOCX) e imágenes (JPG, JPEG, PNG)'
+    );
   }
+
+  const empleado = await this.prisma.empleado.findUnique({
+    where: { id: empleadoId },
+  });
+
+  if (!empleado) {
+    throw new NotFoundException(`Empleado con ID ${empleadoId} no encontrado`);
+  }
+
+  return this.prisma.documento.create({
+    data: {
+      empleadoId,
+      tipoDocumento,
+      nombreOriginal: archivo.originalname,
+      rutaArchivo: `/uploads/${archivo.filename}`,
+      subidoPorUsuarioId: usuarioId,
+    },
+  });
+}
 
   async obtenerDocumentosPorEmpleado(empleadoId: number) {
     const empleado = await this.prisma.empleado.findUnique({
