@@ -37,9 +37,9 @@ export class ExpedienteService {
       where: { id: empleadoId },
     });
 
-    if (!empleado) {
-      throw new NotFoundException(`Empleado con ID ${empleadoId} no encontrado`);
-    }
+  const empleado = await this.prisma.empleado.findUnique({
+    where: { id: empleadoId },
+  });
 
     const rutaEncriptada = CryptoJS.AES.encrypt(
       `/uploads/${archivo.filename}`,
@@ -56,6 +56,17 @@ export class ExpedienteService {
       },
     });
   }
+
+  return this.prisma.documento.create({
+    data: {
+      empleadoId,
+      tipoDocumento,
+      nombreOriginal: archivo.originalname,
+      rutaArchivo: `/uploads/${archivo.filename}`,
+      subidoPorUsuarioId: usuarioId,
+    },
+  });
+}
 
   async obtenerDocumentosPorEmpleado(empleadoId: number) {
     const empleado = await this.prisma.empleado.findUnique({
