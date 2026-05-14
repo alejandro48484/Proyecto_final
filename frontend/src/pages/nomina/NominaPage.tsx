@@ -21,16 +21,19 @@ export default function NominaPage() {
   const [dialogoDetalle, setDialogoDetalle] = useState(false);
   const [dialogoAjuste, setDialogoAjuste] = useState(false);
   const [, setDetalleAjuste] = useState<any>(null);
-  const [formPeriodo, setFormPeriodo] = useState({
-    tipoPeriodo: 'MENSUAL', fechaInicio: '', fechaFin: '',
-  });
+  const { esAdminOGestor, esAdmin } = useRol();
+
+  const [tipoPeriodo, setTipoPeriodo] = useState('MENSUAL');
+  const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
+  const [anio, setAnio] = useState<number>(new Date().getFullYear());
+  const [quincena, setQuincena] = useState<number>(1);
+
   const [formDetalle, setFormDetalle] = useState({
     periodoNominaId: 0, empleadoId: 0, horasExtra: 0, bonificaciones: 0, deducciones: 0,
   });
   const [formAjuste, setFormAjuste] = useState({
     detalleNominaId: 0, campo: 'horasExtra', valorNuevo: 0, motivo: '',
   });
-  const { esAdminOGestor, esAdmin } = useRol();
 
   const cargarDatos = async () => {
     try {
@@ -62,7 +65,11 @@ export default function NominaPage() {
   const crearPeriodo = async () => {
     try {
       setError('');
-      await cliente.post('/nomina/periodos', formPeriodo);
+      const datos: any = { tipoPeriodo, mes, anio };
+      if (tipoPeriodo === 'QUINCENAL') {
+        datos.quincena = quincena;
+      }
+      await cliente.post('/nomina/periodos', datos);
       setExito('Período creado exitosamente');
       setDialogoPeriodo(false);
       cargarDatos();
@@ -160,8 +167,8 @@ export default function NominaPage() {
                   <TableRow key={per.id} hover sx={{ cursor: 'pointer' }} onClick={() => { cargarPeriodo(per.id); setTab(1); }}>
                     <TableCell>{per.id}</TableCell>
                     <TableCell>{per.tipoPeriodo}</TableCell>
-                    <TableCell>{new Date(per.fechaInicio).toLocaleDateString()}</TableCell>
-                    <TableCell>{new Date(per.fechaFin).toLocaleDateString()}</TableCell>
+                    <TableCell>{new Date(per.fechaInicio).toLocaleDateString('es-GT')}</TableCell>
+                    <TableCell>{new Date(per.fechaFin).toLocaleDateString('es-GT')}</TableCell>
                     <TableCell><Chip label={per.estado} color={per.estado === 'ABIERTO' ? 'success' : 'default'} size="small" /></TableCell>
                     <TableCell>{per.detalles?.length || 0}</TableCell>
                     <TableCell>
@@ -192,7 +199,7 @@ export default function NominaPage() {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
                       <Typography variant="h6">
-                        Período {periodoSeleccionado.tipoPeriodo}: {new Date(periodoSeleccionado.fechaInicio).toLocaleDateString()} - {new Date(periodoSeleccionado.fechaFin).toLocaleDateString()}
+                        Período {periodoSeleccionado.tipoPeriodo}: {new Date(periodoSeleccionado.fechaInicio).toLocaleDateString('es-GT')} - {new Date(periodoSeleccionado.fechaFin).toLocaleDateString('es-GT')}
                       </Typography>
                       <Chip label={periodoSeleccionado.estado} color={periodoSeleccionado.estado === 'ABIERTO' ? 'success' : 'default'} size="small" sx={{ mt: 1 }} />
                     </Box>
@@ -256,12 +263,35 @@ export default function NominaPage() {
         <DialogTitle>Nuevo Período de Nómina</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField select label="Tipo de Período" value={formPeriodo.tipoPeriodo} onChange={(e) => setFormPeriodo({ ...formPeriodo, tipoPeriodo: e.target.value })} fullWidth>
+            <TextField select label="Tipo de Período" value={tipoPeriodo} onChange={(e) => setTipoPeriodo(e.target.value)} fullWidth>
               <MenuItem value="MENSUAL">MENSUAL</MenuItem>
               <MenuItem value="QUINCENAL">QUINCENAL</MenuItem>
             </TextField>
-            <TextField label="Fecha Inicio" type="date" value={formPeriodo.fechaInicio} onChange={(e) => setFormPeriodo({ ...formPeriodo, fechaInicio: e.target.value })} fullWidth slotProps={{ inputLabel: { shrink: true } }} />
-            <TextField label="Fecha Fin" type="date" value={formPeriodo.fechaFin} onChange={(e) => setFormPeriodo({ ...formPeriodo, fechaFin: e.target.value })} fullWidth slotProps={{ inputLabel: { shrink: true } }} />
+            <TextField select label="Mes" value={mes} onChange={(e) => setMes(Number(e.target.value))} fullWidth>
+              <MenuItem value={1}>Enero</MenuItem>
+              <MenuItem value={2}>Febrero</MenuItem>
+              <MenuItem value={3}>Marzo</MenuItem>
+              <MenuItem value={4}>Abril</MenuItem>
+              <MenuItem value={5}>Mayo</MenuItem>
+              <MenuItem value={6}>Junio</MenuItem>
+              <MenuItem value={7}>Julio</MenuItem>
+              <MenuItem value={8}>Agosto</MenuItem>
+              <MenuItem value={9}>Septiembre</MenuItem>
+              <MenuItem value={10}>Octubre</MenuItem>
+              <MenuItem value={11}>Noviembre</MenuItem>
+              <MenuItem value={12}>Diciembre</MenuItem>
+            </TextField>
+            <TextField select label="Año" value={anio} onChange={(e) => setAnio(Number(e.target.value))} fullWidth>
+              <MenuItem value={2025}>2025</MenuItem>
+              <MenuItem value={2026}>2026</MenuItem>
+              <MenuItem value={2027}>2027</MenuItem>
+            </TextField>
+            {tipoPeriodo === 'QUINCENAL' && (
+              <TextField select label="Quincena" value={quincena} onChange={(e) => setQuincena(Number(e.target.value))} fullWidth>
+                <MenuItem value={1}>Primera quincena (1 al 15)</MenuItem>
+                <MenuItem value={2}>Segunda quincena (16 al último día)</MenuItem>
+              </TextField>
+            )}
           </Box>
         </DialogContent>
         <DialogActions>
@@ -281,7 +311,7 @@ export default function NominaPage() {
             </TextField>
             <TextField label="Horas Extra (Q)" type="number" value={formDetalle.horasExtra} onChange={(e) => setFormDetalle({ ...formDetalle, horasExtra: Number(e.target.value) })} fullWidth />
             <TextField label="Bonificaciones (Q)" type="number" value={formDetalle.bonificaciones} onChange={(e) => setFormDetalle({ ...formDetalle, bonificaciones: Number(e.target.value) })} fullWidth />
-            <TextField label="Deducciones (Q)" type="number" value={formDetalle.deducciones} onChange={(e) => setFormDetalle({ ...formDetalle, deducciones: Number(e.target.value) })} fullWidth />
+            <TextField label="Deducciones adicionales (Q)" type="number" value={formDetalle.deducciones} onChange={(e) => setFormDetalle({ ...formDetalle, deducciones: Number(e.target.value) })} fullWidth />
           </Box>
         </DialogContent>
         <DialogActions>
