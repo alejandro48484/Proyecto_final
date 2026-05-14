@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import cliente from '../../api/cliente';
+// @ts-ignore
+import html2pdf from 'html2pdf.js';
 import {
   Box, Typography, Button, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Chip, Dialog, DialogTitle,
   DialogContent, DialogActions, TextField, MenuItem, Alert, CircularProgress,
   Tabs, Tab, IconButton, Card, CardContent
 } from '@mui/material';
-import { Add, Lock, Calculate, Edit } from '@mui/icons-material';
+import { Add, Lock, Calculate, Edit, Receipt } from '@mui/icons-material';
 import { useRol } from '../../hooks/useRol';
 
 export default function NominaPage() {
@@ -20,17 +22,24 @@ export default function NominaPage() {
   const [dialogoPeriodo, setDialogoPeriodo] = useState(false);
   const [dialogoDetalle, setDialogoDetalle] = useState(false);
   const [dialogoAjuste, setDialogoAjuste] = useState(false);
+  const [dialogoVoucher, setDialogoVoucher] = useState(false);
+  const [datosVoucher, setDatosVoucher] = useState<any>(null);
+  const [cargandoVoucher, setCargandoVoucher] = useState(false);
   const [, setDetalleAjuste] = useState<any>(null);
-  const [formPeriodo, setFormPeriodo] = useState({
-    tipoPeriodo: 'MENSUAL', fechaInicio: '', fechaFin: '',
-  });
+  const { esAdminOGestor, esAdmin } = useRol();
+  const refVoucher = useRef<HTMLDivElement>(null);
+
+  const [tipoPeriodo, setTipoPeriodo] = useState('MENSUAL');
+  const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
+  const [anio, setAnio] = useState<number>(new Date().getFullYear());
+  const [quincena, setQuincena] = useState<number>(1);
+
   const [formDetalle, setFormDetalle] = useState({
     periodoNominaId: 0, empleadoId: 0, horasExtra: 0, bonificaciones: 0, deducciones: 0,
   });
   const [formAjuste, setFormAjuste] = useState({
     detalleNominaId: 0, campo: 'horasExtra', valorNuevo: 0, motivo: '',
   });
-  const { esAdminOGestor, esAdmin } = useRol();
 
   const cargarDatos = async () => {
     try {
@@ -62,7 +71,11 @@ export default function NominaPage() {
   const crearPeriodo = async () => {
     try {
       setError('');
-      await cliente.post('/nomina/periodos', formPeriodo);
+      const datos: any = { tipoPeriodo, mes, anio };
+      if (tipoPeriodo === 'QUINCENAL') {
+        datos.quincena = quincena;
+      }
+      await cliente.post('/nomina/periodos', datos);
       setExito('Período creado exitosamente');
       setDialogoPeriodo(false);
       cargarDatos();
@@ -123,6 +136,31 @@ export default function NominaPage() {
     }
   };
 
+  const verVoucher = async (empleadoId: number) => {
+    if (!periodoSeleccionado) return;
+    try {
+      setCargandoVoucher(true);
+      const res = await cliente.get(`/reportes/voucher/${periodoSeleccionado.id}/${empleadoId}`);
+      setDatosVoucher(res.data.voucher);
+      setDialogoVoucher(true);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al cargar voucher');
+    } finally {
+      setCargandoVoucher(false);
+    }
+  };
+
+  const descargarVoucherPDF = () => {
+    if (!refVoucher.current) return;
+    html2pdf().set({
+      margin: 10,
+      filename: `voucher_${datosVoucher?.empleado?.nombre}_${datosVoucher?.periodo?.tipo}.pdf`,
+      image: { type: 'jpeg' as const, quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
+    }).from(refVoucher.current).save();
+  };
+
   if (cargando) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
 
   return (
@@ -160,8 +198,8 @@ export default function NominaPage() {
                   <TableRow key={per.id} hover sx={{ cursor: 'pointer' }} onClick={() => { cargarPeriodo(per.id); setTab(1); }}>
                     <TableCell>{per.id}</TableCell>
                     <TableCell>{per.tipoPeriodo}</TableCell>
-                    <TableCell>{new Date(per.fechaInicio).toLocaleDateString()}</TableCell>
-                    <TableCell>{new Date(per.fechaFin).toLocaleDateString()}</TableCell>
+                    <TableCell>{new Date(per.fechaInicio).toLocaleDateString('es-GT')}</TableCell>
+                    <TableCell>{new Date(per.fechaFin).toLocaleDateString('es-GT')}</TableCell>
                     <TableCell><Chip label={per.estado} color={per.estado === 'ABIERTO' ? 'success' : 'default'} size="small" /></TableCell>
                     <TableCell>{per.detalles?.length || 0}</TableCell>
                     <TableCell>
@@ -192,7 +230,7 @@ export default function NominaPage() {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
                       <Typography variant="h6">
-                        Período {periodoSeleccionado.tipoPeriodo}: {new Date(periodoSeleccionado.fechaInicio).toLocaleDateString()} - {new Date(periodoSeleccionado.fechaFin).toLocaleDateString()}
+                        Período {periodoSeleccionado.tipoPeriodo}: {new Date(periodoSeleccionado.fechaInicio).toLocaleDateString('es-GT')} - {new Date(periodoSeleccionado.fechaFin).toLocaleDateString('es-GT')}
                       </Typography>
                       <Chip label={periodoSeleccionado.estado} color={periodoSeleccionado.estado === 'ABIERTO' ? 'success' : 'default'} size="small" sx={{ mt: 1 }} />
                     </Box>
@@ -241,6 +279,9 @@ export default function NominaPage() {
                               <IconButton color="warning" onClick={() => abrirAjuste(det)} size="small" title="Ajustar"><Edit /></IconButton>
                             </>
                           )}
+                          <IconButton color="success" onClick={() => verVoucher(det.empleado?.id)} size="small" title="Ver voucher">
+                            <Receipt />
+                          </IconButton>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -256,12 +297,35 @@ export default function NominaPage() {
         <DialogTitle>Nuevo Período de Nómina</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField select label="Tipo de Período" value={formPeriodo.tipoPeriodo} onChange={(e) => setFormPeriodo({ ...formPeriodo, tipoPeriodo: e.target.value })} fullWidth>
+            <TextField select label="Tipo de Período" value={tipoPeriodo} onChange={(e) => setTipoPeriodo(e.target.value)} fullWidth>
               <MenuItem value="MENSUAL">MENSUAL</MenuItem>
               <MenuItem value="QUINCENAL">QUINCENAL</MenuItem>
             </TextField>
-            <TextField label="Fecha Inicio" type="date" value={formPeriodo.fechaInicio} onChange={(e) => setFormPeriodo({ ...formPeriodo, fechaInicio: e.target.value })} fullWidth slotProps={{ inputLabel: { shrink: true } }} />
-            <TextField label="Fecha Fin" type="date" value={formPeriodo.fechaFin} onChange={(e) => setFormPeriodo({ ...formPeriodo, fechaFin: e.target.value })} fullWidth slotProps={{ inputLabel: { shrink: true } }} />
+            <TextField select label="Mes" value={mes} onChange={(e) => setMes(Number(e.target.value))} fullWidth>
+              <MenuItem value={1}>Enero</MenuItem>
+              <MenuItem value={2}>Febrero</MenuItem>
+              <MenuItem value={3}>Marzo</MenuItem>
+              <MenuItem value={4}>Abril</MenuItem>
+              <MenuItem value={5}>Mayo</MenuItem>
+              <MenuItem value={6}>Junio</MenuItem>
+              <MenuItem value={7}>Julio</MenuItem>
+              <MenuItem value={8}>Agosto</MenuItem>
+              <MenuItem value={9}>Septiembre</MenuItem>
+              <MenuItem value={10}>Octubre</MenuItem>
+              <MenuItem value={11}>Noviembre</MenuItem>
+              <MenuItem value={12}>Diciembre</MenuItem>
+            </TextField>
+            <TextField select label="Año" value={anio} onChange={(e) => setAnio(Number(e.target.value))} fullWidth>
+              <MenuItem value={2025}>2025</MenuItem>
+              <MenuItem value={2026}>2026</MenuItem>
+              <MenuItem value={2027}>2027</MenuItem>
+            </TextField>
+            {tipoPeriodo === 'QUINCENAL' && (
+              <TextField select label="Quincena" value={quincena} onChange={(e) => setQuincena(Number(e.target.value))} fullWidth>
+                <MenuItem value={1}>Primera quincena (1 al 15)</MenuItem>
+                <MenuItem value={2}>Segunda quincena (16 al último día)</MenuItem>
+              </TextField>
+            )}
           </Box>
         </DialogContent>
         <DialogActions>
@@ -281,7 +345,7 @@ export default function NominaPage() {
             </TextField>
             <TextField label="Horas Extra (Q)" type="number" value={formDetalle.horasExtra} onChange={(e) => setFormDetalle({ ...formDetalle, horasExtra: Number(e.target.value) })} fullWidth />
             <TextField label="Bonificaciones (Q)" type="number" value={formDetalle.bonificaciones} onChange={(e) => setFormDetalle({ ...formDetalle, bonificaciones: Number(e.target.value) })} fullWidth />
-            <TextField label="Deducciones (Q)" type="number" value={formDetalle.deducciones} onChange={(e) => setFormDetalle({ ...formDetalle, deducciones: Number(e.target.value) })} fullWidth />
+            <TextField label="Deducciones adicionales (Q)" type="number" value={formDetalle.deducciones} onChange={(e) => setFormDetalle({ ...formDetalle, deducciones: Number(e.target.value) })} fullWidth />
           </Box>
         </DialogContent>
         <DialogActions>
@@ -306,6 +370,86 @@ export default function NominaPage() {
         <DialogActions>
           <Button onClick={() => setDialogoAjuste(false)}>Cancelar</Button>
           <Button variant="contained" onClick={realizarAjuste}>Aplicar Ajuste</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={dialogoVoucher} onClose={() => setDialogoVoucher(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            Voucher de Nómina
+            <Button variant="contained" color="error" size="small" onClick={descargarVoucherPDF}>
+              Descargar PDF
+            </Button>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {cargandoVoucher ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress /></Box>
+          ) : datosVoucher && (
+            <div ref={refVoucher}>
+              <Box sx={{ p: 2 }}>
+                <Typography variant="h6" align="center" sx={{ fontWeight: 'bold', mb: 2, color: '#2E5090' }}>
+                  VOUCHER DE PAGO
+                </Typography>
+                <Box sx={{ mb: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
+                  <Typography variant="body2"><strong>Empleado:</strong> {datosVoucher.empleado?.nombre}</Typography>
+                  <Typography variant="body2"><strong>Cargo:</strong> {datosVoucher.empleado?.cargo}</Typography>
+                  <Typography variant="body2"><strong>Departamento:</strong> {datosVoucher.empleado?.departamento}</Typography>
+                  <Typography variant="body2"><strong>DPI:</strong> {datosVoucher.empleado?.dpi}</Typography>
+                </Box>
+                <Box sx={{ mb: 2, p: 2, backgroundColor: '#e8f4fd', borderRadius: 1 }}>
+                  <Typography variant="body2"><strong>Período:</strong> {datosVoucher.periodo?.tipo}</Typography>
+                  <Typography variant="body2"><strong>Fecha inicio:</strong> {new Date(datosVoucher.periodo?.fechaInicio).toLocaleDateString('es-GT')}</Typography>
+                  <Typography variant="body2"><strong>Fecha fin:</strong> {new Date(datosVoucher.periodo?.fechaFin).toLocaleDateString('es-GT')}</Typography>
+                </Box>
+                <TableContainer component={Paper} sx={{ mb: 2 }}>
+                  <Table size="small">
+                    <TableBody>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Salario Base</TableCell>
+                        <TableCell align="right">Q{Number(datosVoucher.desglose?.salarioBase).toFixed(2)}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Horas Extra</TableCell>
+                        <TableCell align="right">Q{Number(datosVoucher.desglose?.horasExtra).toFixed(2)}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Bonificaciones</TableCell>
+                        <TableCell align="right">Q{Number(datosVoucher.desglose?.bonificaciones).toFixed(2)}</TableCell>
+                      </TableRow>
+                      <TableRow sx={{ backgroundColor: '#e8f4fd' }}>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Total Bruto</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>Q{Number(datosVoucher.desglose?.totalBruto).toFixed(2)}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold', color: 'error.main' }}>IGSS (4.83%)</TableCell>
+                        <TableCell align="right" sx={{ color: 'error.main' }}>-Q{Number(datosVoucher.desglose?.igss).toFixed(2)}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold', color: 'error.main' }}>IRTRA (1%)</TableCell>
+                        <TableCell align="right" sx={{ color: 'error.main' }}>-Q{Number(datosVoucher.desglose?.irtra).toFixed(2)}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold', color: 'error.main' }}>Otras deducciones</TableCell>
+                        <TableCell align="right" sx={{ color: 'error.main' }}>-Q{Number(datosVoucher.desglose?.deducciones).toFixed(2)}</TableCell>
+                      </TableRow>
+                      <TableRow sx={{ backgroundColor: '#ffeaea' }}>
+                        <TableCell sx={{ fontWeight: 'bold', color: 'error.main' }}>Total Deducciones</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 'bold', color: 'error.main' }}>-Q{Number(datosVoucher.desglose?.totalDeducciones).toFixed(2)}</TableCell>
+                      </TableRow>
+                      <TableRow sx={{ backgroundColor: '#c6efce' }}>
+                        <TableCell sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>SALARIO NETO</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#0d7a3e' }}>Q{Number(datosVoucher.desglose?.salarioNeto).toFixed(2)}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            </div>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogoVoucher(false)}>Cerrar</Button>
         </DialogActions>
       </Dialog>
     </Box>
