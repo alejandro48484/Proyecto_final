@@ -3,9 +3,9 @@ import cliente from '../../api/cliente';
 import {
   Box, Typography, Card, CardContent, Button, TextField,
   Alert, CircularProgress, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Paper, Tabs, Tab, LinearProgress
+  TableHead, TableRow, Paper, Tabs, Tab, LinearProgress, MenuItem
 } from '@mui/material';
-import { Assessment, People, School, CheckCircle, Download } from '@mui/icons-material';
+import { Assessment, People, School, CheckCircle, Download, Business } from '@mui/icons-material';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 
@@ -18,11 +18,26 @@ export default function ReportesPage() {
   const [datosExpedientes, setDatosExpedientes] = useState<any[]>([]);
   const [datosAcademico, setDatosAcademico] = useState<any[]>([]);
   const [datosCumplimiento, setDatosCumplimiento] = useState<any>(null);
+  const [periodoIdDepto, setPeriodoIdDepto] = useState('');
+  const [departamentos, setDepartamentos] = useState<any[]>([]);
+  const [departamentoId, setDepartamentoId] = useState('');
+  const [datosNominaDepto, setDatosNominaDepto] = useState<any>(null);
 
   const refNomina = useRef<HTMLDivElement>(null);
   const refExpedientes = useRef<HTMLDivElement>(null);
   const refAcademico = useRef<HTMLDivElement>(null);
   const refCumplimiento = useRef<HTMLDivElement>(null);
+  const refNominaDepto = useRef<HTMLDivElement>(null);
+
+  const cargarDepartamentos = async () => {
+    if (departamentos.length > 0) return;
+    try {
+      const res = await cliente.get('/departamentos');
+      setDepartamentos(res.data);
+    } catch {
+      setError('Error al cargar departamentos');
+    }
+  };
 
   const cargarReporteNomina = async () => {
     if (!periodoId) return setError('Ingrese el ID del período');
@@ -33,6 +48,23 @@ export default function ReportesPage() {
       setDatosNomina(res.data);
     } catch {
       setError('Error al cargar reporte de nómina');
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const cargarReporteNominaDepto = async () => {
+    if (!periodoIdDepto) return setError('Ingrese el ID del período');
+    try {
+      setCargando(true);
+      setError('');
+      const url = departamentoId
+        ? `/reportes/nomina-departamento/${periodoIdDepto}?departamentoId=${departamentoId}`
+        : `/reportes/nomina-departamento/${periodoIdDepto}`;
+      const res = await cliente.get(url);
+      setDatosNominaDepto(res.data);
+    } catch {
+      setError('Error al cargar reporte de nómina por departamento');
     } finally {
       setCargando(false);
     }
@@ -79,7 +111,7 @@ export default function ReportesPage() {
 
   const descargarPDF = (ref: React.RefObject<HTMLDivElement | null>, nombreArchivo: string) => {
     if (!ref.current) return;
-   const opciones = {
+    const opciones = {
       margin: 10,
       filename: `${nombreArchivo}_${new Date().toLocaleDateString('es-GT').replace(/\//g, '-')}.pdf`,
       image: { type: 'jpeg' as const, quality: 0.98 },
@@ -95,11 +127,12 @@ export default function ReportesPage() {
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
 
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
+      <Tabs value={tab} onChange={(_, v) => { setTab(v); if (v === 4) cargarDepartamentos(); }} sx={{ mb: 3 }}>
         <Tab icon={<Assessment />} label="Nómina" />
         <Tab icon={<People />} label="Expedientes" />
         <Tab icon={<School />} label="Académico" />
         <Tab icon={<CheckCircle />} label="Cumplimiento" />
+        <Tab icon={<Business />} label="Nómina x Depto" />
       </Tabs>
 
       {tab === 0 && (
@@ -224,14 +257,7 @@ export default function ReportesPage() {
                           <TableRow key={emp.id} hover>
                             <TableCell>{emp.nombre}</TableCell>
                             <TableCell>
-                              <span style={{
-                                padding: '2px 8px',
-                                borderRadius: '12px',
-                                fontSize: '12px',
-                                fontWeight: 'bold',
-                                backgroundColor: emp.estado === 'COMPLETO' ? '#c6efce' : emp.estado === 'EN_PROCESO' ? '#ffeb9c' : '#ffc7ce',
-                                color: emp.estado === 'COMPLETO' ? '#0d7a3e' : emp.estado === 'EN_PROCESO' ? '#9c6500' : '#9c0006',
-                              }}>
+                              <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold', backgroundColor: emp.estado === 'COMPLETO' ? '#c6efce' : emp.estado === 'EN_PROCESO' ? '#ffeb9c' : '#ffc7ce', color: emp.estado === 'COMPLETO' ? '#0d7a3e' : emp.estado === 'EN_PROCESO' ? '#9c6500' : '#9c0006' }}>
                                 {emp.estado}
                               </span>
                             </TableCell>
@@ -392,6 +418,93 @@ export default function ReportesPage() {
               </>
             )}
           </div>
+        </Box>
+      )}
+
+      {tab === 4 && (
+        <Box>
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+              <TextField label="ID del Período" type="number" value={periodoIdDepto} onChange={(e) => setPeriodoIdDepto(e.target.value)} size="small" />
+              <TextField select label="Departamento (opcional)" value={departamentoId} onChange={(e) => setDepartamentoId(e.target.value)} size="small" sx={{ minWidth: 220 }}>
+                <MenuItem value="">Todos los departamentos</MenuItem>
+                {departamentos.map((d: any) => (
+                  <MenuItem key={d.id} value={d.id}>{d.nombre}</MenuItem>
+                ))}
+              </TextField>
+              <Button variant="contained" onClick={cargarReporteNominaDepto} disabled={cargando}>
+                {cargando ? <CircularProgress size={24} /> : 'Generar Reporte'}
+              </Button>
+              {datosNominaDepto && !datosNominaDepto.error && (
+                <Button variant="contained" color="error" startIcon={<Download />} onClick={() => descargarPDF(refNominaDepto, 'reporte_nomina_departamento')}>
+                  Descargar PDF
+                </Button>
+              )}
+            </Box>
+          </Paper>
+
+          {datosNominaDepto && !datosNominaDepto.error && (
+            <div ref={refNominaDepto}>
+              <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <Card sx={{ flex: 1 }}>
+                  <CardContent>
+                    <Typography color="text.secondary" variant="body2">Total Empleados</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold' }}>{datosNominaDepto.totalEmpleados}</Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ flex: 1 }}>
+                  <CardContent>
+                    <Typography color="text.secondary" variant="body2">Período</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{datosNominaDepto.periodo?.tipo}</Typography>
+                    <Typography variant="body2">{new Date(datosNominaDepto.periodo?.fechaInicio).toLocaleDateString('es-GT')} - {new Date(datosNominaDepto.periodo?.fechaFin).toLocaleDateString('es-GT')}</Typography>
+                  </CardContent>
+                </Card>
+              </Box>
+
+              {datosNominaDepto.reportePorDepartamento?.map((depto: any, i: number) => (
+                <Card key={i} sx={{ mb: 3 }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#2E5090' }}>{depto.departamento}</Typography>
+                      <Box sx={{ display: 'flex', gap: 2 }}>
+                        <Typography variant="body2"><strong>Bruto:</strong> Q{depto.totalBruto.toFixed(2)}</Typography>
+                        <Typography variant="body2"><strong>Deducciones:</strong> Q{depto.totalDeducciones.toFixed(2)}</Typography>
+                        <Typography variant="body2" sx={{ color: '#27ae60' }}><strong>Neto:</strong> Q{depto.totalNeto.toFixed(2)}</Typography>
+                      </Box>
+                    </Box>
+                    <TableContainer>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Empleado</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }} align="right">Salario Base</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }} align="right">Horas Extra</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }} align="right">Bonificaciones</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }} align="right">IGSS</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }} align="right">IRTRA</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }} align="right">Neto</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {depto.empleados.map((emp: any, j: number) => (
+                            <TableRow key={j} hover>
+                              <TableCell>{emp.empleado}</TableCell>
+                              <TableCell align="right">Q{emp.salarioBase.toFixed(2)}</TableCell>
+                              <TableCell align="right">Q{emp.horasExtra.toFixed(2)}</TableCell>
+                              <TableCell align="right">Q{emp.bonificaciones.toFixed(2)}</TableCell>
+                              <TableCell align="right">Q{emp.igss.toFixed(2)}</TableCell>
+                              <TableCell align="right">Q{emp.irtra.toFixed(2)}</TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 'bold', color: '#27ae60' }}>Q{emp.salarioNeto.toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </Box>
       )}
     </Box>
