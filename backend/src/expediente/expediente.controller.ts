@@ -43,16 +43,22 @@ export class ExpedienteController {
           cb(null, nombre);
         },
       }),
-      fileFilter: (_req, file, cb) => {
-        const tiposPermitidos = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
-        const ext = extname(file.originalname).toLowerCase();
-        if (tiposPermitidos.includes(ext)) {
-          cb(null, true);
-        } else {
-          cb(new BadRequestException(`Tipo de archivo no permitido: ${ext}`), false);
-        }
-      },
-      limits: { fileSize: 5 * 1024 * 1024 },
+fileFilter: (_req, file, cb) => {
+  const tiposPermitidos = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
+  const ext = extname(file.originalname).toLowerCase();
+  if (tiposPermitidos.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(
+      new BadRequestException(
+        `Tipo de archivo no permitido: ${ext}. Solo se aceptan: PDF, Word (DOC, DOCX) e imágenes (JPG, JPEG, PNG)`
+      ),
+      false,
+    );
+  }
+},      limits: { 
+  fileSize: 5 * 1024 * 1024,
+},
     }),
   )
   subirDocumento(
