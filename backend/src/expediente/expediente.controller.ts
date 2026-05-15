@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
-import { diskStorage } from 'multer';
+import { memoryStorage } from 'multer';
 import { extname } from 'path';
 import { ExpedienteService } from './expediente.service';
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
@@ -36,29 +36,24 @@ export class ExpedienteController {
   @Roles('ADMINISTRADOR', 'GESTOR_RRHH')
   @UseInterceptors(
     FileInterceptor('archivo', {
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (_req, file, cb) => {
-          const nombre = `${Date.now()}${extname(file.originalname)}`;
-          cb(null, nombre);
-        },
-      }),
-fileFilter: (_req, file, cb) => {
-  const tiposPermitidos = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
-  const ext = extname(file.originalname).toLowerCase();
-  if (tiposPermitidos.includes(ext)) {
-    cb(null, true);
-  } else {
-    cb(
-      new BadRequestException(
-        `Tipo de archivo no permitido: ${ext}. Solo se aceptan: PDF, Word (DOC, DOCX) e imágenes (JPG, JPEG, PNG)`
-      ),
-      false,
-    );
-  }
-},      limits: { 
-  fileSize: 5 * 1024 * 1024,
-},
+      storage: memoryStorage(),
+      fileFilter: (_req, file, cb) => {
+        const tiposPermitidos = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
+        const ext = extname(file.originalname).toLowerCase();
+        if (tiposPermitidos.includes(ext)) {
+          cb(null, true);
+        } else {
+          cb(
+            new BadRequestException(
+              `Tipo de archivo no permitido: ${ext}. Solo se aceptan: PDF, Word (DOC, DOCX) e imágenes (JPG, JPEG, PNG)`
+            ),
+            false,
+          );
+        }
+      },
+      limits: {
+        fileSize: 5 * 1024 * 1024,
+      },
     }),
   )
   subirDocumento(
