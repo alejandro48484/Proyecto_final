@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SupabaseService } from '../supabase/supabase.service';
 import { TipoDocumento } from '@prisma/client';
 import { extname } from 'path';
 import * as CryptoJS from 'crypto-js';
@@ -8,7 +9,10 @@ const ENCRYPTION_KEY = process.env.JWT_SECRET || 'clave-encriptacion-documentos-
 
 @Injectable()
 export class ExpedienteService {
-  constructor(private prisma: PrismaService) {}
+constructor(
+  private prisma: PrismaService,
+  private supabaseService: SupabaseService,
+) {}
 
   desencriptarRuta(rutaEncriptada: string): string {
     try {
@@ -19,43 +23,50 @@ export class ExpedienteService {
     }
   }
 
-  async subirDocumento(
-    empleadoId: number,
-    tipoDocumento: TipoDocumento,
-    archivo: Express.Multer.File,
-    usuarioId: number,
-  ) {
-    const tiposPermitidos = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
-    const ext = extname(archivo.originalname).toLowerCase();
-    if (!tiposPermitidos.includes(ext)) {
-      throw new BadRequestException(
-        'Tipo de archivo no permitido. Solo se aceptan: PDF, Word (DOC, DOCX) e imágenes (JPG, JPEG, PNG)'
-      );
-    }
-
-    const empleado = await this.prisma.empleado.findUnique({
-      where: { id: empleadoId },
-    });
-
-    if (!empleado) {
-      throw new NotFoundException(`Empleado con ID ${empleadoId} no encontrado`);
-    }
-
-    const rutaEncriptada = CryptoJS.AES.encrypt(
-      `/uploads/${archivo.filename}`,
-      ENCRYPTION_KEY
-    ).toString();
-
-    return this.prisma.documento.create({
-      data: {
-        empleadoId,
-        tipoDocumento,
-        nombreOriginal: archivo.originalname,
-        rutaArchivo: rutaEncriptada,
-        subidoPorUsuarioId: usuarioId,
-      },
-    });
+ async subirDocumento(
+  empleadoId: number,
+  tipoDocumento: TipoDocumento,
+  archivo: Express.Multer.File,
+  usuarioId: number,
+) {
+  const tiposPermitidos = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
+  const ext = extname(archivo.originalname).toLowerCase();
+  if (!tiposPermitidos.includes(ext)) {
+    throw new BadRequestException(
+      'Tipo de archivo no permitido. Solo se aceptan: PDF, Word (DOC, DOCX) e imágenes (JPG, JPEG, PNG)'
+    );
   }
+
+  const empleado = await this.prisma.empleado.findUnique({
+    where: { id: empleadoId },
+  });
+
+  if (!empleado) {
+    throw new NotFoundException(`Empleado con ID ${empleadoId} no encontrado`);
+  }
+
+  const nombreArchivo = `${Date.now()}_${archivo.originalname.replace(/\s/g, '_')}`;
+  const rutaStorage = `expedientes/${empleadoId}/${nombreArchivo}`;
+
+  const urlPublica = await this.supabaseService.subirArchivo(
+    'documentos',
+    rutaStorage,
+    archivo.buffer,
+    archivo.mimetype,
+  );
+
+  const rutaEncriptada = CryptoJS.AES.encrypt(urlPublica, ENCRYPTION_KEY).toString();
+
+  return this.prisma.documento.create({
+    data: {
+      empleadoId,
+      tipoDocumento,
+      nombreOriginal: archivo.originalname,
+      rutaArchivo: rutaEncriptada,
+      subidoPorUsuarioId: usuarioId,
+    },
+  });
+}
 
   async obtenerDocumentosPorEmpleado(empleadoId: number) {
     const empleado = await this.prisma.empleado.findUnique({

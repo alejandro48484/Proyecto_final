@@ -9,6 +9,7 @@ import { NominaModule } from './nomina/nomina.module';
 import { DepartamentosModule } from './departamentos/departamentos.module';
 import { ExpedienteModule } from './expediente/expediente.module';
 import { ReportesModule } from './reportes/reportes.module';
+import { SupabaseModule } from './supabase/supabase.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ReportesModule } from './reportes/reportes.module';
         limit: 200,
       },
     ]),
+    SupabaseModule,
     PrismaModule,
     AuthModule,
     EmpleadosModule,
