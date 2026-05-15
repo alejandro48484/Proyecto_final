@@ -87,7 +87,27 @@ constructor(
       rutaArchivo: this.desencriptarRuta(doc.rutaArchivo),
     }));
   }
+async obtenerUrlDocumento(id: number) {
+  const documento = await this.prisma.documento.findUnique({
+    where: { id },
+    include: { empleado: true },
+  });
 
+  if (!documento) {
+    throw new NotFoundException(`Documento con ID ${id} no encontrado`);
+  }
+
+  const urlDesencriptada = this.desencriptarRuta(documento.rutaArchivo);
+
+  return {
+    id: documento.id,
+    nombreOriginal: documento.nombreOriginal,
+    tipoDocumento: documento.tipoDocumento,
+    fechaCarga: documento.fechaCarga,
+    empleado: `${documento.empleado.nombres} ${documento.empleado.apellidos}`,
+    urlPublica: urlDesencriptada,
+  };
+}
   async eliminarDocumento(id: number) {
     const documento = await this.prisma.documento.findUnique({
       where: { id },

@@ -79,6 +79,12 @@ export class ExpedienteController {
     return this.expedienteService.obtenerDocumentosPorEmpleado(empleadoId);
   }
 
+  @Get('ver/:id')
+  @ApiOperation({ summary: 'Obtener URL pública de un documento para visualizarlo' })
+  async verDocumento(@Param('id', ParseIntPipe) id: number) {
+    return this.expedienteService.obtenerUrlDocumento(id);
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar un documento del expediente' })
   @Roles('ADMINISTRADOR', 'GESTOR_RRHH')
