@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, ParseIntPipe, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { EmpleadosService } from './empleados.service';
 import { CrearEmpleadoDto } from './dto/crear-empleado.dto';
@@ -18,8 +18,8 @@ export class EmpleadosController {
   @Post()
   @ApiOperation({ summary: 'Crear un nuevo empleado' })
   @Roles('ADMINISTRADOR', 'GESTOR_RRHH')
-  crear(@Body() dto: CrearEmpleadoDto) {
-    return this.empleadosService.crear(dto);
+  crear(@Body() dto: CrearEmpleadoDto, @Request() req: any) {
+    return this.empleadosService.crear(dto, req.user.id);
   }
 
   @Get()
@@ -37,21 +37,21 @@ export class EmpleadosController {
   @Put(':id')
   @ApiOperation({ summary: 'Actualizar un empleado' })
   @Roles('ADMINISTRADOR', 'GESTOR_RRHH')
-  actualizar(@Param('id', ParseIntPipe) id: number, @Body() dto: ActualizarEmpleadoDto) {
-    return this.empleadosService.actualizar(id, dto);
+  actualizar(@Param('id', ParseIntPipe) id: number, @Body() dto: ActualizarEmpleadoDto, @Request() req: any) {
+    return this.empleadosService.actualizar(id, dto, req.user.id);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar un empleado' })
   @Roles('ADMINISTRADOR')
-  eliminar(@Param('id', ParseIntPipe) id: number) {
-    return this.empleadosService.eliminar(id);
+  eliminar(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    return this.empleadosService.eliminar(id, req.user.id);
   }
 
   @Patch(':id/estado')
   @ApiOperation({ summary: 'Cambiar estado laboral de un empleado' })
   @Roles('ADMINISTRADOR', 'GESTOR_RRHH')
-  cambiarEstado(@Param('id', ParseIntPipe) id: number, @Body() dto: CambiarEstadoDto) {
-    return this.empleadosService.cambiarEstado(id, dto);
+  cambiarEstado(@Param('id', ParseIntPipe) id: number, @Body() dto: CambiarEstadoDto, @Request() req: any) {
+    return this.empleadosService.cambiarEstado(id, dto, req.user.id);
   }
 }
