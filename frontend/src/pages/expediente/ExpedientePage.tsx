@@ -107,9 +107,10 @@ export default function ExpedientePage() {
     }
   };
 
-  const verDocumento = (rutaArchivo: string) => {
-    window.open(`https://proyecto-final-yns1.onrender.com${rutaArchivo}`, '_blank');
-  };
+ const verDocumento = (rutaArchivo: string) => {
+  const url = rutaArchivo.startsWith('http') ? rutaArchivo : `https://proyecto-final-yns1.onrender.com${rutaArchivo}`;
+  window.open(url, '_blank');
+};
 
   const colorEstado = (estado: string) => {
     if (estado === 'COMPLETO') return 'success';
