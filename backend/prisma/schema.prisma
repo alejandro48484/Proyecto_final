@@ -116,7 +116,8 @@ model InformacionAcademica {
   fechaGraduacion      DateTime? @map("fecha_graduacion") @db.Date
   creadoEn             DateTime  @default(now()) @map("creado_en") @db.Timestamp(6)
   empleado Empleado @relation(fields: [empleadoId], references: [id], onUpdate: Cascade, onDelete: Cascade)
-  @@index([empleadoId], map: "idx_academica_empleado")@@index([tituloAcademico], map: "idx_academica_titulo")
+ @@index([empleadoId], map: "idx_academica_empleado")
+@@index([tituloAcademico], map: "idx_academica_titulo")
 @@index([creadoEn], map: "idx_academica_creado")
   @@map("informacion_academica")
 }
