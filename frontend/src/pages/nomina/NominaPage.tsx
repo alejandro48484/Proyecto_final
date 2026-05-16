@@ -8,21 +8,25 @@ import {
   DialogContent, DialogActions, TextField, MenuItem, Alert, CircularProgress,
   Tabs, Tab, IconButton, Card, CardContent
 } from '@mui/material';
-import { Add, Lock, Calculate, Edit, Receipt } from '@mui/icons-material';
+import { Add, Lock, Calculate, Edit, Receipt, Group, GroupAdd } from '@mui/icons-material';
 import { useRol } from '../../hooks/useRol';
 
 export default function NominaPage() {
   const [tab, setTab] = useState(0);
   const [periodos, setPeriodos] = useState<any[]>([]);
   const [empleados, setEmpleados] = useState<any[]>([]);
+  const [departamentos, setDepartamentos] = useState<any[]>([]);
   const [periodoSeleccionado, setPeriodoSeleccionado] = useState<any>(null);
   const [cargando, setCargando] = useState(true);
+  const [cargandoMasivo, setCargandoMasivo] = useState(false);
   const [error, setError] = useState('');
   const [exito, setExito] = useState('');
   const [dialogoPeriodo, setDialogoPeriodo] = useState(false);
   const [dialogoDetalle, setDialogoDetalle] = useState(false);
   const [dialogoAjuste, setDialogoAjuste] = useState(false);
   const [dialogoVoucher, setDialogoVoucher] = useState(false);
+  const [dialogoMasivo, setDialogoMasivo] = useState(false);
+  const [departamentoFiltro, setDepartamentoFiltro] = useState('');
   const [datosVoucher, setDatosVoucher] = useState<any>(null);
   const [cargandoVoucher, setCargandoVoucher] = useState(false);
   const [, setDetalleAjuste] = useState<any>(null);
@@ -44,12 +48,14 @@ export default function NominaPage() {
   const cargarDatos = async () => {
     try {
       setCargando(true);
-      const [perRes, empRes] = await Promise.all([
+      const [perRes, empRes, depRes] = await Promise.all([
         cliente.get('/nomina/periodos'),
         cliente.get('/empleados'),
+        cliente.get('/departamentos'),
       ]);
       setPeriodos(perRes.data);
       setEmpleados(empRes.data);
+      setDepartamentos(depRes.data);
     } catch {
       setError('Error al cargar datos');
     } finally {
@@ -72,9 +78,7 @@ export default function NominaPage() {
     try {
       setError('');
       const datos: any = { tipoPeriodo, mes, anio };
-      if (tipoPeriodo === 'QUINCENAL') {
-        datos.quincena = quincena;
-      }
+      if (tipoPeriodo === 'QUINCENAL') datos.quincena = quincena;
       await cliente.post('/nomina/periodos', datos);
       setExito('Período creado exitosamente');
       setDialogoPeriodo(false);
@@ -105,6 +109,54 @@ export default function NominaPage() {
       if (formDetalle.periodoNominaId) cargarPeriodo(formDetalle.periodoNominaId);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al agregar detalle');
+    }
+  };
+
+  const agregarMasivo = async () => {
+    if (!periodoSeleccionado) return;
+    try {
+      setCargandoMasivo(true);
+      setError('');
+
+      const empleadosFiltrados = empleados.filter((e: any) => {
+        if (e.estadoLaboral === 'RETIRADO') return false;
+        if (departamentoFiltro) return e.departamentoId === Number(departamentoFiltro);
+        return true;
+      });
+
+      const yaEnNomina = periodoSeleccionado.detalles?.map((d: any) => d.empleadoId) || [];
+      const empleadosNuevos = empleadosFiltrados.filter((e: any) => !yaEnNomina.includes(e.id));
+
+      if (empleadosNuevos.length === 0) {
+        setError('Todos los empleados seleccionados ya están en este período');
+        setCargandoMasivo(false);
+        return;
+      }
+
+      let exitosos = 0;
+      for (const emp of empleadosNuevos) {
+        try {
+          await cliente.post('/nomina/detalles', {
+            periodoNominaId: periodoSeleccionado.id,
+            empleadoId: emp.id,
+            horasExtra: 0,
+            bonificaciones: 0,
+            deducciones: 0,
+          });
+          exitosos++;
+        } catch {
+          // continuar con los demás
+        }
+      }
+
+      setExito(`${exitosos} empleado(s) agregado(s) exitosamente`);
+      setDialogoMasivo(false);
+      setDepartamentoFiltro('');
+      cargarPeriodo(periodoSeleccionado.id);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al agregar empleados');
+    } finally {
+      setCargandoMasivo(false);
     }
   };
 
@@ -160,6 +212,12 @@ export default function NominaPage() {
       jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
     }).from(refVoucher.current).save();
   };
+
+  const empleadosFiltradosPreview = empleados.filter((e: any) => {
+    if (e.estadoLaboral === 'RETIRADO') return false;
+    if (departamentoFiltro) return e.departamentoId === Number(departamentoFiltro);
+    return true;
+  });
 
   if (cargando) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
 
@@ -235,12 +293,23 @@ export default function NominaPage() {
                       <Chip label={periodoSeleccionado.estado} color={periodoSeleccionado.estado === 'ABIERTO' ? 'success' : 'default'} size="small" sx={{ mt: 1 }} />
                     </Box>
                     {periodoSeleccionado.estado === 'ABIERTO' && esAdminOGestor && (
-                      <Button variant="contained" startIcon={<Add />} onClick={() => {
-                        setFormDetalle({ ...formDetalle, periodoNominaId: periodoSeleccionado.id });
-                        setDialogoDetalle(true);
-                      }}>
-                        Agregar Empleado
-                      </Button>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button variant="outlined" startIcon={<Group />} onClick={() => setDialogoMasivo(true)}>
+                          Agregar por Departamento
+                        </Button>
+                        <Button variant="contained" startIcon={<GroupAdd />} onClick={() => {
+                          setDepartamentoFiltro('');
+                          setDialogoMasivo(true);
+                        }}>
+                          Agregar Todos
+                        </Button>
+                        <Button variant="contained" color="secondary" startIcon={<Add />} onClick={() => {
+                          setFormDetalle({ ...formDetalle, periodoNominaId: periodoSeleccionado.id });
+                          setDialogoDetalle(true);
+                        }}>
+                          Agregar Individual
+                        </Button>
+                      </Box>
                     )}
                   </Box>
                 </CardContent>
@@ -334,8 +403,31 @@ export default function NominaPage() {
         </DialogActions>
       </Dialog>
 
+      <Dialog open={dialogoMasivo} onClose={() => { setDialogoMasivo(false); setDepartamentoFiltro(''); }} maxWidth="sm" fullWidth>
+        <DialogTitle>Agregar Empleados a Nómina</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField select label="Filtrar por departamento (opcional)" value={departamentoFiltro} onChange={(e) => setDepartamentoFiltro(e.target.value)} fullWidth>
+              <MenuItem value="">Todos los departamentos</MenuItem>
+              {departamentos.map((d: any) => (
+                <MenuItem key={d.id} value={d.id}>{d.nombre}</MenuItem>
+              ))}
+            </TextField>
+            <Alert severity="info">
+              Se agregarán <strong>{empleadosFiltradosPreview.length}</strong> empleado(s) {departamentoFiltro ? `del departamento seleccionado` : `de todos los departamentos`}. Los que ya estén en el período serán omitidos.
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setDialogoMasivo(false); setDepartamentoFiltro(''); }}>Cancelar</Button>
+          <Button variant="contained" onClick={agregarMasivo} disabled={cargandoMasivo}>
+            {cargandoMasivo ? <CircularProgress size={24} /> : 'Agregar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Dialog open={dialogoDetalle} onClose={() => setDialogoDetalle(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Agregar Empleado a Nómina</DialogTitle>
+        <DialogTitle>Agregar Empleado Individual a Nómina</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <TextField select label="Empleado" value={formDetalle.empleadoId} onChange={(e) => setFormDetalle({ ...formDetalle, empleadoId: Number(e.target.value) })} fullWidth>
