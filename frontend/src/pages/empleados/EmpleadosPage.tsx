@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import { Add, Edit, Delete, SwapHoriz } from '@mui/icons-material';
 import { useRol } from '../../hooks/useRol';
+import ConfirmDialog from '../../components/ConfirmDialog';
 
 export default function EmpleadosPage() {
   const { esAdmin, esAdminOGestor } = useRol();
@@ -27,6 +28,9 @@ export default function EmpleadosPage() {
     telefono: '', correo: '', numeroDpi: '', salarioBase: 0,
     cargo: '', departamentoId: 0, estadoLaboral: 'ACTIVO',
   });
+const [confirmAbierto, setConfirmAbierto] = useState(false);
+const [confirmMensaje, setConfirmMensaje] = useState('');
+const [confirmAccion, setConfirmAccion] = useState<() => void>(() => {});
 
   const cargarDatos = async () => {
     try {
@@ -128,15 +132,21 @@ export default function EmpleadosPage() {
     }
   };
 
-  const eliminar = async (id: number) => {
-    if (!confirm('¿Está seguro de eliminar este empleado?')) return;
+ const eliminar = (id: number) => {
+  const emp = empleados.find((e) => e.id === id);
+  setConfirmMensaje(`¿Está seguro que desea eliminar al empleado ${emp?.nombres} ${emp?.apellidos}? Esta acción no se puede deshacer.`);
+  setConfirmAccion(() => async () => {
     try {
       await cliente.delete(`/empleados/${id}`);
+      setConfirmAbierto(false);
       cargarDatos();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al eliminar');
+      setConfirmAbierto(false);
     }
-  };
+  });
+  setConfirmAbierto(true);
+};
 
   const abrirCambiarEstado = (emp: Empleado) => {
     setEmpleadoEstado(emp);
@@ -278,6 +288,14 @@ export default function EmpleadosPage() {
           <Button variant="contained" onClick={cambiarEstado}>Cambiar</Button>
         </DialogActions>
       </Dialog>
+      <ConfirmDialog
+  abierto={confirmAbierto}
+  titulo="Eliminar Empleado"
+  mensaje={confirmMensaje}
+  onConfirmar={confirmAccion}
+  onCancelar={() => setConfirmAbierto(false)}
+  textoBotom="Eliminar"
+/>
     </Box>
   );
 }
