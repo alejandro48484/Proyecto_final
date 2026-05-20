@@ -465,85 +465,158 @@ export default function NominaPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={dialogoVoucher} onClose={() => setDialogoVoucher(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            Voucher de Nómina
-            <Button variant="contained" color="error" size="small" onClick={descargarVoucherPDF}>
-              Descargar PDF
-            </Button>
+      <Dialog open={dialogoVoucher} onClose={() => setDialogoVoucher(false)} maxWidth="md" fullWidth>
+  <DialogTitle>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      Recibo de Pago
+      <Button variant="contained" color="error" size="small" onClick={descargarVoucherPDF}>
+        Descargar PDF
+      </Button>
+    </Box>
+  </DialogTitle>
+  <DialogContent>
+    {cargandoVoucher ? (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress /></Box>
+    ) : datosVoucher && (
+      <div ref={refVoucher}>
+        <Box sx={{ p: 2, border: '1px solid #ccc', borderRadius: 1 }}>
+
+          {/* ENCABEZADO */}
+          <Typography variant="h6" align="center" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+            RECIBO DE PAGO MENSUAL
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="body2">Fecha de contratación: {datosVoucher.empleado?.fechaContratacion ? new Date(datosVoucher.empleado.fechaContratacion).toLocaleDateString('es-GT') : 'N/A'}</Typography>
+            <Box sx={{ textAlign: 'right' }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Empresa, S.A.</Typography>
+              <Typography variant="body2">NIT: 000000-0</Typography>
+            </Box>
           </Box>
-        </DialogTitle>
-        <DialogContent>
-          {cargandoVoucher ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress /></Box>
-          ) : datosVoucher && (
-            <div ref={refVoucher}>
-              <Box sx={{ p: 2 }}>
-                <Typography variant="h6" align="center" sx={{ fontWeight: 'bold', mb: 2, color: '#2E5090' }}>
-                  VOUCHER DE PAGO
-                </Typography>
-                <Box sx={{ mb: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
-                  <Typography variant="body2"><strong>Empleado:</strong> {datosVoucher.empleado?.nombre}</Typography>
-                  <Typography variant="body2"><strong>Cargo:</strong> {datosVoucher.empleado?.cargo}</Typography>
-                  <Typography variant="body2"><strong>Departamento:</strong> {datosVoucher.empleado?.departamento}</Typography>
-                  <Typography variant="body2"><strong>DPI:</strong> {datosVoucher.empleado?.dpi}</Typography>
-                </Box>
-                <Box sx={{ mb: 2, p: 2, backgroundColor: '#e8f4fd', borderRadius: 1 }}>
-                  <Typography variant="body2"><strong>Período:</strong> {datosVoucher.periodo?.tipo}</Typography>
-                  <Typography variant="body2"><strong>Fecha inicio:</strong> {new Date(datosVoucher.periodo?.fechaInicio).toLocaleDateString('es-GT')}</Typography>
-                  <Typography variant="body2"><strong>Fecha fin:</strong> {new Date(datosVoucher.periodo?.fechaFin).toLocaleDateString('es-GT')}</Typography>
-                </Box>
-                <TableContainer component={Paper} sx={{ mb: 2 }}>
-                  <Table size="small">
-                    <TableBody>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Salario Base</TableCell>
-                        <TableCell align="right">Q{Number(datosVoucher.desglose?.salarioBase).toFixed(2)}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Horas Extra</TableCell>
-                        <TableCell align="right">Q{Number(datosVoucher.desglose?.horasExtra).toFixed(2)}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Bonificaciones</TableCell>
-                        <TableCell align="right">Q{Number(datosVoucher.desglose?.bonificaciones).toFixed(2)}</TableCell>
-                      </TableRow>
-                      <TableRow sx={{ backgroundColor: '#e8f4fd' }}>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Total Bruto</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>Q{Number(datosVoucher.desglose?.totalBruto).toFixed(2)}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold', color: 'error.main' }}>IGSS (4.83%)</TableCell>
-                        <TableCell align="right" sx={{ color: 'error.main' }}>-Q{Number(datosVoucher.desglose?.igss).toFixed(2)}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold', color: 'error.main' }}>IRTRA (1%)</TableCell>
-                        <TableCell align="right" sx={{ color: 'error.main' }}>-Q{Number(datosVoucher.desglose?.irtra).toFixed(2)}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold', color: 'error.main' }}>Otras deducciones</TableCell>
-                        <TableCell align="right" sx={{ color: 'error.main' }}>-Q{Number(datosVoucher.desglose?.deducciones).toFixed(2)}</TableCell>
-                      </TableRow>
-                      <TableRow sx={{ backgroundColor: '#ffeaea' }}>
-                        <TableCell sx={{ fontWeight: 'bold', color: 'error.main' }}>Total Deducciones</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 'bold', color: 'error.main' }}>-Q{Number(datosVoucher.desglose?.totalDeducciones).toFixed(2)}</TableCell>
-                      </TableRow>
-                      <TableRow sx={{ backgroundColor: '#c6efce' }}>
-                        <TableCell sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>SALARIO NETO</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#0d7a3e' }}>Q{Number(datosVoucher.desglose?.salarioNeto).toFixed(2)}</TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+
+          {/* DATOS DEL EMPLEADO */}
+          <Box sx={{ backgroundColor: '#2E5090', color: 'white', p: 1, mb: 1 }}>
+            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>DATOS DEL EMPLEADO</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+            <Typography variant="body2"><strong>Código:</strong> {String(datosVoucher.empleado?.id).padStart(4, '0')}</Typography>
+            <Typography variant="body2"><strong>Nombre:</strong> {datosVoucher.empleado?.nombre}</Typography>
+            <Typography variant="body2"><strong>NIT:</strong> {datosVoucher.empleado?.dpi}</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+            <Typography variant="body2"><strong>Período de pago:</strong> {new Date(datosVoucher.periodo?.fechaInicio).toLocaleDateString('es-GT')} al {new Date(datosVoucher.periodo?.fechaFin).toLocaleDateString('es-GT')}</Typography>
+            <Typography variant="body2"><strong>División:</strong> {datosVoucher.empleado?.departamento}</Typography>
+            <Typography variant="body2"><strong>Puesto:</strong> {datosVoucher.empleado?.cargo}</Typography>
+          </Box>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2"><strong>Observaciones:</strong> {datosVoucher.periodo?.tipo} - {datosVoucher.periodo?.estado}</Typography>
+          </Box>
+
+          {/* INGRESOS Y DESCUENTOS */}
+          <Box sx={{ backgroundColor: '#2E5090', color: 'white', p: 1, mb: 1 }}>
+            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>BOLETA MENSUAL</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            {/* INGRESOS */}
+            <Box sx={{ flex: 1 }}>
+              <Box sx={{ backgroundColor: '#f5f5f5', p: 1, mb: 1 }}>
+                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>INGRESOS</Typography>
               </Box>
-            </div>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogoVoucher(false)}>Cerrar</Button>
-        </DialogActions>
-      </Dialog>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '11px' }}>Descripción</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '11px' }}>Monto</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell sx={{ fontSize: '11px' }}>BONIFICACIÓN DE LEY</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '11px' }}>Q250.00</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell sx={{ fontSize: '11px' }}>SALARIO ORDINARIO</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '11px' }}>Q{Number(datosVoucher.desglose?.salarioBase).toFixed(2)}</TableCell>
+                  </TableRow>
+                  {Number(datosVoucher.desglose?.horasExtra) > 0 && (
+                    <TableRow>
+                      <TableCell sx={{ fontSize: '11px' }}>HORAS EXTRA</TableCell>
+                      <TableCell align="right" sx={{ fontSize: '11px' }}>Q{Number(datosVoucher.desglose?.horasExtra).toFixed(2)}</TableCell>
+                    </TableRow>
+                  )}
+                  {Number(datosVoucher.desglose?.bonificaciones) > 0 && (
+                    <TableRow>
+                      <TableCell sx={{ fontSize: '11px' }}>BONIFICACIONES</TableCell>
+                      <TableCell align="right" sx={{ fontSize: '11px' }}>Q{Number(datosVoucher.desglose?.bonificaciones).toFixed(2)}</TableCell>
+                    </TableRow>
+                  )}
+                  <TableRow sx={{ backgroundColor: '#e8f4fd' }}>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '11px' }}>Total de Ingresos:</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '11px' }}>Q{(Number(datosVoucher.desglose?.salarioBase) + Number(datosVoucher.desglose?.horasExtra) + Number(datosVoucher.desglose?.bonificaciones) + 250).toFixed(2)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </Box>
+
+            {/* DESCUENTOS */}
+            <Box sx={{ flex: 1 }}>
+              <Box sx={{ backgroundColor: '#f5f5f5', p: 1, mb: 1 }}>
+                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>DESCUENTOS</Typography>
+              </Box>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '11px' }}>Descripción</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '11px' }}>Monto</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell sx={{ fontSize: '11px' }}>IGSS</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '11px' }}>Q{Number(datosVoucher.desglose?.igss).toFixed(2)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell sx={{ fontSize: '11px' }}>RETENCIÓN ISR</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '11px' }}>Q{Number(datosVoucher.desglose?.deducciones).toFixed(2)}</TableCell>
+                  </TableRow>
+                  {Number(datosVoucher.desglose?.irtra) > 0 && (
+                    <TableRow>
+                      <TableCell sx={{ fontSize: '11px' }}>IRTRA</TableCell>
+                      <TableCell align="right" sx={{ fontSize: '11px' }}>Q{Number(datosVoucher.desglose?.irtra).toFixed(2)}</TableCell>
+                    </TableRow>
+                  )}
+                  <TableRow sx={{ backgroundColor: '#ffeaea' }}>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '11px' }}>Total de Descuentos:</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '11px', color: '#e74c3c' }}>Q{Number(datosVoucher.desglose?.totalDeducciones).toFixed(2)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </Box>
+          </Box>
+
+          {/* LÍQUIDO A RECIBIR */}
+          <Box sx={{ backgroundColor: '#c6efce', p: 1.5, mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>LÍQUIDO A RECIBIR:</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#0d7a3e' }}>Q{Number(datosVoucher.desglose?.salarioNeto).toFixed(2)}</Typography>
+          </Box>
+
+          {/* FIRMA */}
+          <Box sx={{ mt: 4, pt: 2, borderTop: '1px solid #ccc' }}>
+            <Typography variant="body2" align="center">RECIBI CONFORME:</Typography>
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+              <Box sx={{ borderTop: '1px solid #000', width: '200px', textAlign: 'center', pt: 0.5 }}>
+                <Typography variant="body2">(F): {datosVoucher.empleado?.nombre}</Typography>
+              </Box>
+            </Box>
+          </Box>
+
+        </Box>
+      </div>
+    )}
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setDialogoVoucher(false)}>Cerrar</Button>
+  </DialogActions>
+</Dialog>
     </Box>
   );
 }
