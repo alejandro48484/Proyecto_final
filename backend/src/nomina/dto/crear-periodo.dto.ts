@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsInt, Min, Max } from 'class-validator';
+import { IsEnum, IsInt, Min, Max, IsOptional } from 'class-validator';
 import { TipoPeriodo } from '@prisma/client';
 
 export class CrearPeriodoDto {
@@ -19,6 +19,7 @@ export class CrearPeriodoDto {
   anio: number;
 
   @ApiProperty({ example: 1, description: 'Quincena (1 o 2), solo para períodos quincenales', required: false })
+  @IsOptional()
   @IsInt({ message: 'La quincena debe ser 1 o 2' })
   @Min(1, { message: 'La quincena debe ser 1 o 2' })
   @Max(2, { message: 'La quincena debe ser 1 o 2' })
