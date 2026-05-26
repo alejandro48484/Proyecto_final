@@ -8,7 +8,7 @@ import {
   Chip, Card, CardContent, LinearProgress, Dialog, DialogTitle,
   DialogContent, DialogActions, IconButton
 } from '@mui/material';
-import { CloudUpload, Delete, CheckCircle, Warning, Error as ErrorIcon, Visibility } from '@mui/icons-material';
+import { CloudUpload, Delete, CheckCircle, Warning, Error as ErrorIcon, Download } from '@mui/icons-material';
 import { useRol } from '../../hooks/useRol';
 
 const TIPOS_DOCUMENTO = [
@@ -107,9 +107,22 @@ export default function ExpedientePage() {
     }
   };
 
- const verDocumento = (rutaArchivo: string) => {
-  const url = rutaArchivo.startsWith('http') ? rutaArchivo : `https://proyecto-final-yns1.onrender.com${rutaArchivo}`;
-  window.open(url, '_blank');
+ const descargarDocumento = async (rutaArchivo: string, nombreOriginal: string) => {
+  try {
+    const url = rutaArchivo.startsWith('http') ? rutaArchivo : `https://proyecto-final-yns1.onrender.com${rutaArchivo}`;
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = nombreOriginal;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+  } catch {
+    setError('Error al descargar el documento');
+  }
 };
 
   const colorEstado = (estado: string) => {
@@ -210,9 +223,9 @@ export default function ExpedientePage() {
                       <TableCell>{doc.nombreOriginal}</TableCell>
                       <TableCell>{new Date(doc.fechaCarga).toLocaleDateString('es-GT')}</TableCell>
                       <TableCell>
-                        <IconButton color="primary" size="small" title="Ver documento" onClick={() => verDocumento(doc.rutaArchivo)}>
-                          <Visibility />
-                        </IconButton>
+                        <IconButton color="primary" size="small" title="Descargar documento" onClick={() => descargarDocumento(doc.rutaArchivo, doc.nombreOriginal)}>
+                        <Download />
+                        </IconButton> 
                         {esAdminOGestor && (
                           <IconButton color="error" onClick={() => eliminarDocumento(doc.id)} size="small">
                             <Delete />
