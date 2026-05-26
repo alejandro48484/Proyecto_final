@@ -219,6 +219,47 @@ export default function NominaPage() {
     return true;
   });
 
+const agregarTodos = async () => {
+  if (!periodoSeleccionado) return;
+  try {
+    setCargandoMasivo(true);
+    setError('');
+
+    const empleadosActivos = empleados.filter((e: any) => e.estadoLaboral !== 'RETIRADO');
+    const yaEnNomina = periodoSeleccionado.detalles?.map((d: any) => d.empleadoId) || [];
+    const empleadosNuevos = empleadosActivos.filter((e: any) => !yaEnNomina.includes(e.id));
+
+    if (empleadosNuevos.length === 0) {
+      setError('Todos los empleados ya están en este período');
+      setCargandoMasivo(false);
+      return;
+    }
+
+    let exitosos = 0;
+    for (const emp of empleadosNuevos) {
+      try {
+        await cliente.post('/nomina/detalles', {
+          periodoNominaId: periodoSeleccionado.id,
+          empleadoId: emp.id,
+          horasExtra: 0,
+          bonificaciones: 0,
+          deducciones: 0,
+        });
+        exitosos++;
+      } catch {
+        // continuar con los demás
+      }
+    }
+
+    setExito(`${exitosos} empleado(s) agregado(s) exitosamente`);
+    cargarPeriodo(periodoSeleccionado.id);
+  } catch (err: any) {
+    setError(err.response?.data?.message || 'Error al agregar empleados');
+  } finally {
+    setCargandoMasivo(false);
+  }
+};
+
   if (cargando) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
 
   return (
@@ -298,10 +339,10 @@ export default function NominaPage() {
                           Agregar por Departamento
                         </Button>
                         <Button variant="contained" startIcon={<GroupAdd />} onClick={() => {
-                          setDepartamentoFiltro('');
-                          setDialogoMasivo(true);
-                        }}>
-                          Agregar Todos
+                         setDepartamentoFiltro('');
+                         agregarTodos();
+                         }}>
+                         Agregar Todos
                         </Button>
                         <Button variant="contained" color="secondary" startIcon={<Add />} onClick={() => {
                           setFormDetalle({ ...formDetalle, periodoNominaId: periodoSeleccionado.id });
