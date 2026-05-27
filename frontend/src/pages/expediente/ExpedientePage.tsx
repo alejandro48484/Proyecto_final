@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import { CloudUpload, Delete, CheckCircle, Warning, Error as ErrorIcon, Download } from '@mui/icons-material';
 import { useRol } from '../../hooks/useRol';
+import { useAutoLimpiarError } from '../../hooks/useAutoLimpiarError';
 
 const TIPOS_DOCUMENTO = [
   'CONTRATO', 'CERTIFICADO_ESTUDIO', 'DPI',
@@ -24,6 +25,7 @@ export default function ExpedientePage() {
   const [validacion, setValidacion] = useState<any>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
+  useAutoLimpiarError(error, setError);
   const [exito, setExito] = useState('');
   const [dialogoSubir, setDialogoSubir] = useState(false);
   const [tipoDocumento, setTipoDocumento] = useState('CONTRATO');

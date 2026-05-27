@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import { Add, Lock, Calculate, Edit, Receipt, Group, GroupAdd } from '@mui/icons-material';
 import { useRol } from '../../hooks/useRol';
+import { useAutoLimpiarError } from '../../hooks/useAutoLimpiarError';
 
 export default function NominaPage() {
   const [tab, setTab] = useState(0);
@@ -20,6 +21,7 @@ export default function NominaPage() {
   const [cargando, setCargando] = useState(true);
   const [cargandoMasivo, setCargandoMasivo] = useState(false);
   const [error, setError] = useState('');
+  useAutoLimpiarError(error, setError);
   const [exito, setExito] = useState('');
   const [dialogoPeriodo, setDialogoPeriodo] = useState(false);
   const [dialogoDetalle, setDialogoDetalle] = useState(false);

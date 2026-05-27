@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import { Add, Edit, Delete, ExpandMore, School } from '@mui/icons-material';
 import { useRol } from '../../hooks/useRol';
+import { useAutoLimpiarError } from '../../hooks/useAutoLimpiarError';
 
 interface InfoAcademica {
   id: number;
@@ -24,6 +25,7 @@ export default function AcademicoPage() {
   const [registros, setRegistros] = useState<any[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
+  useAutoLimpiarError(error, setError);
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
   const [editando, setEditando] = useState<InfoAcademica | null>(null);
   const [formulario, setFormulario] = useState({
