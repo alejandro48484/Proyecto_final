@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import cliente from '../../api/cliente';
 import type { Empleado, Departamento } from '../../types';
@@ -23,14 +22,19 @@ export default function EmpleadosPage() {
   const [editando, setEditando] = useState<Empleado | null>(null);
   const [empleadoEstado, setEmpleadoEstado] = useState<Empleado | null>(null);
   const [nuevoEstado, setNuevoEstado] = useState('');
+  const [confirmAbierto, setConfirmAbierto] = useState(false);
+  const [confirmMensaje, setConfirmMensaje] = useState('');
+  const [confirmAccion, setConfirmAccion] = useState<() => void>(() => {});
   const [formulario, setFormulario] = useState({
     nombres: '', apellidos: '', fechaNacimiento: '', direccion: '',
     telefono: '', correo: '', numeroDpi: '', salarioBase: 0,
     cargo: '', departamentoId: 0, estadoLaboral: 'ACTIVO',
   });
-const [confirmAbierto, setConfirmAbierto] = useState(false);
-const [confirmMensaje, setConfirmMensaje] = useState('');
-const [confirmAccion, setConfirmAccion] = useState<() => void>(() => {});
+
+  const actualizarCampo = (campo: string, valor: any) => {
+    setFormulario(prev => ({ ...prev, [campo]: valor }));
+    setErrores({});
+  };
 
   const cargarDatos = async () => {
     try {
@@ -77,39 +81,28 @@ const [confirmAccion, setConfirmAccion] = useState<() => void>(() => {});
 
   const validarFormulario = () => {
     const nuevosErrores: any = {};
-
     if (!formulario.nombres || formulario.nombres.trim().length < 2)
       nuevosErrores.nombres = 'El nombre debe tener al menos 2 caracteres';
-
     if (!formulario.apellidos || formulario.apellidos.trim().length < 2)
       nuevosErrores.apellidos = 'Los apellidos deben tener al menos 2 caracteres';
-
     if (!formulario.numeroDpi || !/^\d{13}$/.test(formulario.numeroDpi))
       nuevosErrores.numeroDpi = 'El DPI debe tener exactamente 13 dígitos numéricos';
-
     if (!formulario.correo)
       nuevosErrores.correo = 'El correo electrónico es requerido';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formulario.correo))
-       nuevosErrores.correo = 'El correo no tiene un formato válido';
-
+      nuevosErrores.correo = 'El correo no tiene un formato válido';
     if (!formulario.telefono || formulario.telefono.trim().length < 8)
-  nuevosErrores.telefono = 'El teléfono es requerido (mínimo 8 dígitos)';
-
+      nuevosErrores.telefono = 'El teléfono es requerido (mínimo 8 dígitos)';
     if (!formulario.direccion || formulario.direccion.trim().length < 5)
-  nuevosErrores.direccion = 'La dirección es requerida (mínimo 5 caracteres)';
-
+      nuevosErrores.direccion = 'La dirección es requerida (mínimo 5 caracteres)';
     if (!formulario.salarioBase || Number(formulario.salarioBase) <= 0)
       nuevosErrores.salarioBase = 'El salario debe ser mayor a 0';
-
     if (!formulario.cargo || formulario.cargo.trim().length < 2)
       nuevosErrores.cargo = 'El cargo debe tener al menos 2 caracteres';
-
     if (!formulario.departamentoId || formulario.departamentoId === 0)
       nuevosErrores.departamentoId = 'Debe seleccionar un departamento';
-
     if (!formulario.fechaNacimiento)
       nuevosErrores.fechaNacimiento = 'La fecha de nacimiento es requerida';
-
     setErrores(nuevosErrores);
     return Object.keys(nuevosErrores).length === 0;
   };
@@ -132,21 +125,21 @@ const [confirmAccion, setConfirmAccion] = useState<() => void>(() => {});
     }
   };
 
- const eliminar = (id: number) => {
-  const emp = empleados.find((e) => e.id === id);
-  setConfirmMensaje(`¿Está seguro que desea eliminar al empleado ${emp?.nombres} ${emp?.apellidos}? Esta acción no se puede deshacer.`);
-  setConfirmAccion(() => async () => {
-    try {
-      await cliente.delete(`/empleados/${id}`);
-      setConfirmAbierto(false);
-      cargarDatos();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al eliminar');
-      setConfirmAbierto(false);
-    }
-  });
-  setConfirmAbierto(true);
-};
+  const eliminar = (id: number) => {
+    const emp = empleados.find((e) => e.id === id);
+    setConfirmMensaje(`¿Está seguro que desea eliminar al empleado ${emp?.nombres} ${emp?.apellidos}? Esta acción no se puede deshacer.`);
+    setConfirmAccion(() => async () => {
+      try {
+        await cliente.delete(`/empleados/${id}`);
+        setConfirmAbierto(false);
+        cargarDatos();
+      } catch (err: any) {
+        setError(err.response?.data?.message || 'Error al eliminar');
+        setConfirmAbierto(false);
+      }
+    });
+    setConfirmAbierto(true);
+  };
 
   const abrirCambiarEstado = (emp: Empleado) => {
     setEmpleadoEstado(emp);
@@ -217,51 +210,42 @@ const [confirmAccion, setConfirmAccion] = useState<() => void>(() => {});
         </Table>
       </TableContainer>
 
-      <Dialog open={dialogoAbierto} onClose={() => setDialogoAbierto(false)} maxWidth="sm" fullWidth>
+      <Dialog open={dialogoAbierto} onClose={() => { setDialogoAbierto(false); setErrores({}); }} maxWidth="sm" fullWidth>
         <DialogTitle>{editando ? 'Editar Empleado' : 'Nuevo Empleado'}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <TextField label="Nombres" value={formulario.nombres}
-              onChange={(e) => setFormulario({ ...formulario, nombres: e.target.value })}
+              onChange={(e) => actualizarCampo('nombres', e.target.value)}
               fullWidth error={!!errores.nombres} helperText={errores.nombres} />
-
             <TextField label="Apellidos" value={formulario.apellidos}
-              onChange={(e) => setFormulario({ ...formulario, apellidos: e.target.value })}
+              onChange={(e) => actualizarCampo('apellidos', e.target.value)}
               fullWidth error={!!errores.apellidos} helperText={errores.apellidos} />
-
             <TextField label="Fecha de Nacimiento" type="date" value={formulario.fechaNacimiento}
-              onChange={(e) => setFormulario({ ...formulario, fechaNacimiento: e.target.value })}
+              onChange={(e) => actualizarCampo('fechaNacimiento', e.target.value)}
               fullWidth slotProps={{ inputLabel: { shrink: true } }}
               error={!!errores.fechaNacimiento} helperText={errores.fechaNacimiento} />
-
             <TextField label="Dirección" value={formulario.direccion}
-              onChange={(e) => setFormulario({ ...formulario, direccion: e.target.value })}
+              onChange={(e) => actualizarCampo('direccion', e.target.value)}
               fullWidth error={!!errores.direccion} helperText={errores.direccion} />
-
             <TextField label="Teléfono" value={formulario.telefono}
-              onChange={(e) => setFormulario({ ...formulario, telefono: e.target.value })}
+              onChange={(e) => actualizarCampo('telefono', e.target.value)}
               fullWidth error={!!errores.telefono} helperText={errores.telefono} />
-
             <TextField label="Correo electrónico" type="email" value={formulario.correo}
-              onChange={(e) => setFormulario({ ...formulario, correo: e.target.value })}
+              onChange={(e) => actualizarCampo('correo', e.target.value)}
               fullWidth error={!!errores.correo} helperText={errores.correo} />
-
             <TextField label="Número de DPI (13 dígitos)" value={formulario.numeroDpi}
-              onChange={(e) => setFormulario({ ...formulario, numeroDpi: e.target.value })}
+              onChange={(e) => actualizarCampo('numeroDpi', e.target.value)}
               fullWidth slotProps={{ htmlInput: { maxLength: 13 } }}
               error={!!errores.numeroDpi} helperText={errores.numeroDpi} />
-
             <TextField label="Salario Base (Q)" type="number" value={formulario.salarioBase}
-              onChange={(e) => setFormulario({ ...formulario, salarioBase: Number(e.target.value) })}
+              onChange={(e) => actualizarCampo('salarioBase', Number(e.target.value))}
               fullWidth slotProps={{ htmlInput: { min: 0 } }}
               error={!!errores.salarioBase} helperText={errores.salarioBase} />
-
             <TextField label="Cargo" value={formulario.cargo}
-              onChange={(e) => setFormulario({ ...formulario, cargo: e.target.value })}
+              onChange={(e) => actualizarCampo('cargo', e.target.value)}
               fullWidth error={!!errores.cargo} helperText={errores.cargo} />
-
             <TextField select label="Departamento" value={formulario.departamentoId}
-              onChange={(e) => setFormulario({ ...formulario, departamentoId: Number(e.target.value) })}
+              onChange={(e) => actualizarCampo('departamentoId', Number(e.target.value))}
               fullWidth error={!!errores.departamentoId} helperText={errores.departamentoId}>
               {departamentos.map((d) => (<MenuItem key={d.id} value={d.id}>{d.nombre}</MenuItem>))}
             </TextField>
@@ -288,14 +272,15 @@ const [confirmAccion, setConfirmAccion] = useState<() => void>(() => {});
           <Button variant="contained" onClick={cambiarEstado}>Cambiar</Button>
         </DialogActions>
       </Dialog>
+
       <ConfirmDialog
-  abierto={confirmAbierto}
-  titulo="Eliminar Empleado"
-  mensaje={confirmMensaje}
-  onConfirmar={confirmAccion}
-  onCancelar={() => setConfirmAbierto(false)}
-  textoBotom="Eliminar"
-/>
+        abierto={confirmAbierto}
+        titulo="Eliminar Empleado"
+        mensaje={confirmMensaje}
+        onConfirmar={confirmAccion}
+        onCancelar={() => setConfirmAbierto(false)}
+        textoBotom="Eliminar"
+      />
     </Box>
   );
 }

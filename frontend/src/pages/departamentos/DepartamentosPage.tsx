@@ -8,11 +8,13 @@ import {
 } from '@mui/material';
 import { Add, Edit, Delete } from '@mui/icons-material';
 import { useRol } from '../../hooks/useRol';
+import { useAutoLimpiarError } from '../../hooks/useAutoLimpiarError';
 
 export default function DepartamentosPage() {
   const [departamentos, setDepartamentos] = useState<any[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
+  useAutoLimpiarError(error, setError);
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
   const [editando, setEditando] = useState<Departamento | null>(null);
   const [formulario, setFormulario] = useState({ nombre: '', descripcion: '' });
