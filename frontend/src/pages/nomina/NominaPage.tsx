@@ -41,7 +41,7 @@ export default function NominaPage() {
   const [quincena, setQuincena] = useState<number>(1);
 
   const [formDetalle, setFormDetalle] = useState({
-    periodoNominaId: 0, empleadoId: 0, horasExtra: 0, bonificaciones: 0, deducciones: 0,
+    periodoNominaId: 0, empleadoId: 0, horasExtra: 0,
   });
   const [formAjuste, setFormAjuste] = useState({
     detalleNominaId: 0, campo: 'horasExtra', valorNuevo: 0, motivo: '',
@@ -105,7 +105,11 @@ export default function NominaPage() {
   const agregarDetalle = async () => {
     try {
       setError('');
-      await cliente.post('/nomina/detalles', formDetalle);
+      await cliente.post('/nomina/detalles', {
+        periodoNominaId: formDetalle.periodoNominaId,
+        empleadoId: formDetalle.empleadoId,
+        horasExtra: formDetalle.horasExtra,
+      });
       setExito('Detalle agregado exitosamente');
       setDialogoDetalle(false);
       if (formDetalle.periodoNominaId) cargarPeriodo(formDetalle.periodoNominaId);
@@ -119,22 +123,18 @@ export default function NominaPage() {
     try {
       setCargandoMasivo(true);
       setError('');
-
       const empleadosFiltrados = empleados.filter((e: any) => {
         if (e.estadoLaboral === 'RETIRADO') return false;
         if (departamentoFiltro) return e.departamentoId === Number(departamentoFiltro);
         return true;
       });
-
       const yaEnNomina = periodoSeleccionado.detalles?.map((d: any) => d.empleadoId) || [];
       const empleadosNuevos = empleadosFiltrados.filter((e: any) => !yaEnNomina.includes(e.id));
-
       if (empleadosNuevos.length === 0) {
         setError('Todos los empleados seleccionados ya están en este período');
         setCargandoMasivo(false);
         return;
       }
-
       let exitosos = 0;
       for (const emp of empleadosNuevos) {
         try {
@@ -142,18 +142,46 @@ export default function NominaPage() {
             periodoNominaId: periodoSeleccionado.id,
             empleadoId: emp.id,
             horasExtra: 0,
-            bonificaciones: 0,
-            deducciones: 0,
           });
           exitosos++;
-        } catch {
-          // continuar con los demás
-        }
+        } catch { }
       }
-
       setExito(`${exitosos} empleado(s) agregado(s) exitosamente`);
       setDialogoMasivo(false);
       setDepartamentoFiltro('');
+      cargarPeriodo(periodoSeleccionado.id);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al agregar empleados');
+    } finally {
+      setCargandoMasivo(false);
+    }
+  };
+
+  const agregarTodos = async () => {
+    if (!periodoSeleccionado) return;
+    try {
+      setCargandoMasivo(true);
+      setError('');
+      const empleadosActivos = empleados.filter((e: any) => e.estadoLaboral !== 'RETIRADO');
+      const yaEnNomina = periodoSeleccionado.detalles?.map((d: any) => d.empleadoId) || [];
+      const empleadosNuevos = empleadosActivos.filter((e: any) => !yaEnNomina.includes(e.id));
+      if (empleadosNuevos.length === 0) {
+        setError('Todos los empleados ya están en este período');
+        setCargandoMasivo(false);
+        return;
+      }
+      let exitosos = 0;
+      for (const emp of empleadosNuevos) {
+        try {
+          await cliente.post('/nomina/detalles', {
+            periodoNominaId: periodoSeleccionado.id,
+            empleadoId: emp.id,
+            horasExtra: 0,
+          });
+          exitosos++;
+        } catch { }
+      }
+      setExito(`${exitosos} empleado(s) agregado(s) exitosamente`);
       cargarPeriodo(periodoSeleccionado.id);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al agregar empleados');
@@ -220,47 +248,6 @@ export default function NominaPage() {
     if (departamentoFiltro) return e.departamentoId === Number(departamentoFiltro);
     return true;
   });
-
-const agregarTodos = async () => {
-  if (!periodoSeleccionado) return;
-  try {
-    setCargandoMasivo(true);
-    setError('');
-
-    const empleadosActivos = empleados.filter((e: any) => e.estadoLaboral !== 'RETIRADO');
-    const yaEnNomina = periodoSeleccionado.detalles?.map((d: any) => d.empleadoId) || [];
-    const empleadosNuevos = empleadosActivos.filter((e: any) => !yaEnNomina.includes(e.id));
-
-    if (empleadosNuevos.length === 0) {
-      setError('Todos los empleados ya están en este período');
-      setCargandoMasivo(false);
-      return;
-    }
-
-    let exitosos = 0;
-    for (const emp of empleadosNuevos) {
-      try {
-        await cliente.post('/nomina/detalles', {
-          periodoNominaId: periodoSeleccionado.id,
-          empleadoId: emp.id,
-          horasExtra: 0,
-          bonificaciones: 0,
-          deducciones: 0,
-        });
-        exitosos++;
-      } catch {
-        // continuar con los demás
-      }
-    }
-
-    setExito(`${exitosos} empleado(s) agregado(s) exitosamente`);
-    cargarPeriodo(periodoSeleccionado.id);
-  } catch (err: any) {
-    setError(err.response?.data?.message || 'Error al agregar empleados');
-  } finally {
-    setCargandoMasivo(false);
-  }
-};
 
   if (cargando) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
 
@@ -340,11 +327,8 @@ const agregarTodos = async () => {
                         <Button variant="outlined" startIcon={<Group />} onClick={() => setDialogoMasivo(true)}>
                           Agregar por Departamento
                         </Button>
-                        <Button variant="contained" startIcon={<GroupAdd />} onClick={() => {
-                         setDepartamentoFiltro('');
-                         agregarTodos();
-                         }}>
-                         Agregar Todos
+                        <Button variant="contained" startIcon={<GroupAdd />} onClick={() => { setDepartamentoFiltro(''); agregarTodos(); }}>
+                          Agregar Todos
                         </Button>
                         <Button variant="contained" color="secondary" startIcon={<Add />} onClick={() => {
                           setFormDetalle({ ...formDetalle, periodoNominaId: periodoSeleccionado.id });
@@ -365,10 +349,9 @@ const agregarTodos = async () => {
                       <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Empleado</TableCell>
                       <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Salario Base</TableCell>
                       <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Horas Extra</TableCell>
-                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Bonificaciones</TableCell>
-                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Deducciones</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Bonificación Ley</TableCell>
                       <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">IGSS</TableCell>
-                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">IRTRA</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">ISR</TableCell>
                       <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Salario Neto</TableCell>
                       <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Acciones</TableCell>
                     </TableRow>
@@ -380,9 +363,8 @@ const agregarTodos = async () => {
                         <TableCell align="right">Q{Number(det.salarioBase).toFixed(2)}</TableCell>
                         <TableCell align="right">Q{Number(det.horasExtra).toFixed(2)}</TableCell>
                         <TableCell align="right">Q{Number(det.bonificaciones).toFixed(2)}</TableCell>
-                        <TableCell align="right">Q{Number(det.deducciones).toFixed(2)}</TableCell>
                         <TableCell align="right">Q{Number(det.igss).toFixed(2)}</TableCell>
-                        <TableCell align="right">Q{Number(det.irtra).toFixed(2)}</TableCell>
+                        <TableCell align="right">Q{Number(det.deducciones).toFixed(2)}</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 'bold' }}>Q{Number(det.salarioNeto).toFixed(2)}</TableCell>
                         <TableCell>
                           {periodoSeleccionado.estado === 'ABIERTO' && esAdminOGestor && (
@@ -447,17 +429,17 @@ const agregarTodos = async () => {
       </Dialog>
 
       <Dialog open={dialogoMasivo} onClose={() => { setDialogoMasivo(false); setDepartamentoFiltro(''); }} maxWidth="sm" fullWidth>
-        <DialogTitle>Agregar Empleados a Nómina</DialogTitle>
+        <DialogTitle>Agregar Empleados por Departamento</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField select label="Filtrar por departamento (opcional)" value={departamentoFiltro} onChange={(e) => setDepartamentoFiltro(e.target.value)} fullWidth>
+            <TextField select label="Seleccionar departamento" value={departamentoFiltro} onChange={(e) => setDepartamentoFiltro(e.target.value)} fullWidth>
               <MenuItem value="">Todos los departamentos</MenuItem>
               {departamentos.map((d: any) => (
                 <MenuItem key={d.id} value={d.id}>{d.nombre}</MenuItem>
               ))}
             </TextField>
             <Alert severity="info">
-              Se agregarán <strong>{empleadosFiltradosPreview.length}</strong> empleado(s) {departamentoFiltro ? `del departamento seleccionado` : `de todos los departamentos`}. Los que ya estén en el período serán omitidos.
+              Se agregarán <strong>{empleadosFiltradosPreview.length}</strong> empleado(s). Los que ya estén en el período serán omitidos.
             </Alert>
           </Box>
         </DialogContent>
@@ -470,7 +452,7 @@ const agregarTodos = async () => {
       </Dialog>
 
       <Dialog open={dialogoDetalle} onClose={() => setDialogoDetalle(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Agregar Empleado Individual a Nómina</DialogTitle>
+        <DialogTitle>Agregar Empleado Individual</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <TextField select label="Empleado" value={formDetalle.empleadoId} onChange={(e) => setFormDetalle({ ...formDetalle, empleadoId: Number(e.target.value) })} fullWidth>
@@ -479,8 +461,6 @@ const agregarTodos = async () => {
               ))}
             </TextField>
             <TextField label="Horas Extra (Q)" type="number" value={formDetalle.horasExtra} onChange={(e) => setFormDetalle({ ...formDetalle, horasExtra: Number(e.target.value) })} fullWidth />
-            <TextField label="Bonificaciones (Q)" type="number" value={formDetalle.bonificaciones} onChange={(e) => setFormDetalle({ ...formDetalle, bonificaciones: Number(e.target.value) })} fullWidth />
-            <TextField label="Deducciones adicionales (Q)" type="number" value={formDetalle.deducciones} onChange={(e) => setFormDetalle({ ...formDetalle, deducciones: Number(e.target.value) })} fullWidth />
           </Box>
         </DialogContent>
         <DialogActions>
@@ -495,8 +475,6 @@ const agregarTodos = async () => {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <TextField select label="Campo a Ajustar" value={formAjuste.campo} onChange={(e) => setFormAjuste({ ...formAjuste, campo: e.target.value })} fullWidth>
               <MenuItem value="horasExtra">Horas Extra</MenuItem>
-              <MenuItem value="bonificaciones">Bonificaciones</MenuItem>
-              <MenuItem value="deducciones">Deducciones</MenuItem>
             </TextField>
             <TextField label="Nuevo Valor (Q)" type="number" value={formAjuste.valorNuevo} onChange={(e) => setFormAjuste({ ...formAjuste, valorNuevo: Number(e.target.value) })} fullWidth />
             <TextField label="Motivo del Ajuste" value={formAjuste.motivo} onChange={(e) => setFormAjuste({ ...formAjuste, motivo: e.target.value })} fullWidth multiline rows={2} />
@@ -509,157 +487,131 @@ const agregarTodos = async () => {
       </Dialog>
 
       <Dialog open={dialogoVoucher} onClose={() => setDialogoVoucher(false)} maxWidth="md" fullWidth>
-  <DialogTitle>
-    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      Recibo de Pago
-      <Button variant="contained" color="error" size="small" onClick={descargarVoucherPDF}>
-        Descargar PDF
-      </Button>
-    </Box>
-  </DialogTitle>
-  <DialogContent>
-    {cargandoVoucher ? (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress /></Box>
-    ) : datosVoucher && (
-      <div ref={refVoucher}>
-        <Box sx={{ p: 2, border: '1px solid #ccc', borderRadius: 1 }}>
-
-          {/* ENCABEZADO */}
-          <Typography variant="h6" align="center" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-            RECIBO DE PAGO MENSUAL
-          </Typography>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-            <Typography variant="body2">Fecha de contratación: {datosVoucher.empleado?.fechaContratacion ? new Date(datosVoucher.empleado.fechaContratacion).toLocaleDateString('es-GT') : 'N/A'}</Typography>
-            <Box sx={{ textAlign: 'right' }}>
-              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Empresa, S.A.</Typography>
-              <Typography variant="body2">NIT: 000000-0</Typography>
-            </Box>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            Recibo de Pago
+            <Button variant="contained" color="error" size="small" onClick={descargarVoucherPDF}>
+              Descargar PDF
+            </Button>
           </Box>
-
-          {/* DATOS DEL EMPLEADO */}
-          <Box sx={{ backgroundColor: '#2E5090', color: 'white', p: 1, mb: 1 }}>
-            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>DATOS DEL EMPLEADO</Typography>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-            <Typography variant="body2"><strong>Código:</strong> {String(datosVoucher.empleado?.id).padStart(4, '0')}</Typography>
-            <Typography variant="body2"><strong>Nombre:</strong> {datosVoucher.empleado?.nombre}</Typography>
-            <Typography variant="body2"><strong>NIT:</strong> {datosVoucher.empleado?.dpi}</Typography>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-            <Typography variant="body2"><strong>Período de pago:</strong> {new Date(datosVoucher.periodo?.fechaInicio).toLocaleDateString('es-GT')} al {new Date(datosVoucher.periodo?.fechaFin).toLocaleDateString('es-GT')}</Typography>
-            <Typography variant="body2"><strong>División:</strong> {datosVoucher.empleado?.departamento}</Typography>
-            <Typography variant="body2"><strong>Puesto:</strong> {datosVoucher.empleado?.cargo}</Typography>
-          </Box>
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2"><strong>Observaciones:</strong> {datosVoucher.periodo?.tipo} - {datosVoucher.periodo?.estado}</Typography>
-          </Box>
-
-          {/* INGRESOS Y DESCUENTOS */}
-          <Box sx={{ backgroundColor: '#2E5090', color: 'white', p: 1, mb: 1 }}>
-            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>BOLETA MENSUAL</Typography>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            {/* INGRESOS */}
-            <Box sx={{ flex: 1 }}>
-              <Box sx={{ backgroundColor: '#f5f5f5', p: 1, mb: 1 }}>
-                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>INGRESOS</Typography>
+        </DialogTitle>
+        <DialogContent>
+          {cargandoVoucher ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress /></Box>
+          ) : datosVoucher && (
+            <div ref={refVoucher}>
+              <Box sx={{ p: 2, border: '1px solid #ccc', borderRadius: 1 }}>
+                <Typography variant="h6" align="center" sx={{ fontWeight: 'bold', mb: 0.5 }}>RECIBO DE PAGO MENSUAL</Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="body2">Fecha de contratación: {datosVoucher.empleado?.fechaContratacion ? new Date(datosVoucher.empleado.fechaContratacion).toLocaleDateString('es-GT') : 'N/A'}</Typography>
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Empresa, S.A.</Typography>
+                    <Typography variant="body2">NIT: 000000-0</Typography>
+                  </Box>
+                </Box>
+                <Box sx={{ backgroundColor: '#2E5090', color: 'white', p: 1, mb: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>DATOS DEL EMPLEADO</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 2, mb: 1, flexWrap: 'wrap' }}>
+                  <Typography variant="body2"><strong>Código:</strong> {String(datosVoucher.empleado?.id).padStart(4, '0')}</Typography>
+                  <Typography variant="body2"><strong>Nombre:</strong> {datosVoucher.empleado?.nombre}</Typography>
+                  <Typography variant="body2"><strong>NIT:</strong> {datosVoucher.empleado?.dpi}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 2, mb: 1, flexWrap: 'wrap' }}>
+                  <Typography variant="body2"><strong>Período:</strong> {new Date(datosVoucher.periodo?.fechaInicio).toLocaleDateString('es-GT')} al {new Date(datosVoucher.periodo?.fechaFin).toLocaleDateString('es-GT')}</Typography>
+                  <Typography variant="body2"><strong>División:</strong> {datosVoucher.empleado?.departamento}</Typography>
+                  <Typography variant="body2"><strong>Puesto:</strong> {datosVoucher.empleado?.cargo}</Typography>
+                </Box>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2"><strong>Observaciones:</strong> {datosVoucher.periodo?.tipo} - {datosVoucher.periodo?.estado}</Typography>
+                </Box>
+                <Box sx={{ backgroundColor: '#2E5090', color: 'white', p: 1, mb: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>BOLETA MENSUAL</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Box sx={{ backgroundColor: '#f5f5f5', p: 1, mb: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>INGRESOS</Typography>
+                    </Box>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 'bold', fontSize: '11px' }}>Descripción</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '11px' }}>Monto</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell sx={{ fontSize: '11px' }}>SALARIO ORDINARIO</TableCell>
+                          <TableCell align="right" sx={{ fontSize: '11px' }}>Q{Number(datosVoucher.desglose?.salarioBase).toFixed(2)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell sx={{ fontSize: '11px' }}>BONIFICACIÓN DE LEY</TableCell>
+                          <TableCell align="right" sx={{ fontSize: '11px' }}>Q250.00</TableCell>
+                        </TableRow>
+                        {Number(datosVoucher.desglose?.horasExtra) > 0 && (
+                          <TableRow>
+                            <TableCell sx={{ fontSize: '11px' }}>HORAS EXTRA</TableCell>
+                            <TableCell align="right" sx={{ fontSize: '11px' }}>Q{Number(datosVoucher.desglose?.horasExtra).toFixed(2)}</TableCell>
+                          </TableRow>
+                        )}
+                        <TableRow sx={{ backgroundColor: '#e8f4fd' }}>
+                          <TableCell sx={{ fontWeight: 'bold', fontSize: '11px' }}>Total Ingresos:</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '11px' }}>Q{(Number(datosVoucher.desglose?.salarioBase) + Number(datosVoucher.desglose?.horasExtra) + 250).toFixed(2)}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Box sx={{ backgroundColor: '#f5f5f5', p: 1, mb: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>DESCUENTOS</Typography>
+                    </Box>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 'bold', fontSize: '11px' }}>Descripción</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '11px' }}>Monto</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell sx={{ fontSize: '11px' }}>IGSS (4.83%)</TableCell>
+                          <TableCell align="right" sx={{ fontSize: '11px' }}>Q{Number(datosVoucher.desglose?.igss).toFixed(2)}</TableCell>
+                        </TableRow>
+                        {Number(datosVoucher.desglose?.deducciones) > 0 && (
+                          <TableRow>
+                            <TableCell sx={{ fontSize: '11px' }}>RETENCIÓN ISR</TableCell>
+                            <TableCell align="right" sx={{ fontSize: '11px' }}>Q{Number(datosVoucher.desglose?.deducciones).toFixed(2)}</TableCell>
+                          </TableRow>
+                        )}
+                        <TableRow sx={{ backgroundColor: '#ffeaea' }}>
+                          <TableCell sx={{ fontWeight: 'bold', fontSize: '11px' }}>Total Descuentos:</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '11px', color: '#e74c3c' }}>Q{Number(datosVoucher.desglose?.totalDeducciones).toFixed(2)}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </Box>
+                </Box>
+                <Box sx={{ backgroundColor: '#c6efce', p: 1.5, mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>LÍQUIDO A RECIBIR:</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#0d7a3e' }}>Q{Number(datosVoucher.desglose?.salarioNeto).toFixed(2)}</Typography>
+                </Box>
+                <Box sx={{ mt: 4, pt: 2, borderTop: '1px solid #ccc' }}>
+                  <Typography variant="body2" align="center">RECIBI CONFORME:</Typography>
+                  <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+                    <Box sx={{ borderTop: '1px solid #000', width: '200px', textAlign: 'center', pt: 0.5 }}>
+                      <Typography variant="body2">(F): {datosVoucher.empleado?.nombre}</Typography>
+                    </Box>
+                  </Box>
+                </Box>
               </Box>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 'bold', fontSize: '11px' }}>Descripción</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '11px' }}>Monto</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  <TableRow>
-                    <TableCell sx={{ fontSize: '11px' }}>BONIFICACIÓN DE LEY</TableCell>
-                    <TableCell align="right" sx={{ fontSize: '11px' }}>Q250.00</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell sx={{ fontSize: '11px' }}>SALARIO ORDINARIO</TableCell>
-                    <TableCell align="right" sx={{ fontSize: '11px' }}>Q{Number(datosVoucher.desglose?.salarioBase).toFixed(2)}</TableCell>
-                  </TableRow>
-                  {Number(datosVoucher.desglose?.horasExtra) > 0 && (
-                    <TableRow>
-                      <TableCell sx={{ fontSize: '11px' }}>HORAS EXTRA</TableCell>
-                      <TableCell align="right" sx={{ fontSize: '11px' }}>Q{Number(datosVoucher.desglose?.horasExtra).toFixed(2)}</TableCell>
-                    </TableRow>
-                  )}
-                  {Number(datosVoucher.desglose?.bonificaciones) > 0 && (
-                    <TableRow>
-                      <TableCell sx={{ fontSize: '11px' }}>BONIFICACIONES</TableCell>
-                      <TableCell align="right" sx={{ fontSize: '11px' }}>Q{Number(datosVoucher.desglose?.bonificaciones).toFixed(2)}</TableCell>
-                    </TableRow>
-                  )}
-                  <TableRow sx={{ backgroundColor: '#e8f4fd' }}>
-                    <TableCell sx={{ fontWeight: 'bold', fontSize: '11px' }}>Total de Ingresos:</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '11px' }}>Q{(Number(datosVoucher.desglose?.salarioBase) + Number(datosVoucher.desglose?.horasExtra) + Number(datosVoucher.desglose?.bonificaciones) + 250).toFixed(2)}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </Box>
-
-            {/* DESCUENTOS */}
-            <Box sx={{ flex: 1 }}>
-              <Box sx={{ backgroundColor: '#f5f5f5', p: 1, mb: 1 }}>
-                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>DESCUENTOS</Typography>
-              </Box>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 'bold', fontSize: '11px' }}>Descripción</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '11px' }}>Monto</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  <TableRow>
-                    <TableCell sx={{ fontSize: '11px' }}>IGSS</TableCell>
-                    <TableCell align="right" sx={{ fontSize: '11px' }}>Q{Number(datosVoucher.desglose?.igss).toFixed(2)}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell sx={{ fontSize: '11px' }}>RETENCIÓN ISR</TableCell>
-                    <TableCell align="right" sx={{ fontSize: '11px' }}>Q{Number(datosVoucher.desglose?.deducciones).toFixed(2)}</TableCell>
-                  </TableRow>
-                  {Number(datosVoucher.desglose?.irtra) > 0 && (
-                    <TableRow>
-                      <TableCell sx={{ fontSize: '11px' }}>IRTRA</TableCell>
-                      <TableCell align="right" sx={{ fontSize: '11px' }}>Q{Number(datosVoucher.desglose?.irtra).toFixed(2)}</TableCell>
-                    </TableRow>
-                  )}
-                  <TableRow sx={{ backgroundColor: '#ffeaea' }}>
-                    <TableCell sx={{ fontWeight: 'bold', fontSize: '11px' }}>Total de Descuentos:</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '11px', color: '#e74c3c' }}>Q{Number(datosVoucher.desglose?.totalDeducciones).toFixed(2)}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </Box>
-          </Box>
-
-          {/* LÍQUIDO A RECIBIR */}
-          <Box sx={{ backgroundColor: '#c6efce', p: 1.5, mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>LÍQUIDO A RECIBIR:</Typography>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#0d7a3e' }}>Q{Number(datosVoucher.desglose?.salarioNeto).toFixed(2)}</Typography>
-          </Box>
-
-          {/* FIRMA */}
-          <Box sx={{ mt: 4, pt: 2, borderTop: '1px solid #ccc' }}>
-            <Typography variant="body2" align="center">RECIBI CONFORME:</Typography>
-            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
-              <Box sx={{ borderTop: '1px solid #000', width: '200px', textAlign: 'center', pt: 0.5 }}>
-                <Typography variant="body2">(F): {datosVoucher.empleado?.nombre}</Typography>
-              </Box>
-            </Box>
-          </Box>
-
-        </Box>
-      </div>
-    )}
-  </DialogContent>
-  <DialogActions>
-    <Button onClick={() => setDialogoVoucher(false)}>Cerrar</Button>
-  </DialogActions>
-</Dialog>
+            </div>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogoVoucher(false)}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
