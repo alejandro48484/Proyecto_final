@@ -1,14 +1,33 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CrearPeriodoDto } from './dto/crear-periodo.dto';
 import { CrearDetalleDto } from './dto/crear-detalle.dto';
 import { AjusteNominaDto } from './dto/ajuste-nomina.dto';
 
+const SALARIO_MINIMO = 4000;
+const BONIFICACION_LEY = 250;
+
 @Injectable()
 export class NominaService {
   constructor(private prisma: PrismaService) {}
 
-  // ==================== PERÍODOS ====================
+  private calcularISR(salarioBase: number): number {
+    if (salarioBase <= SALARIO_MINIMO) return 0;
+    const salarioAnual = salarioBase * 12;
+    const baseImponible = salarioAnual - 48000;
+    if (baseImponible <= 0) return 0;
+    let isrAnual = 0;
+    if (baseImponible <= 300000) {
+      isrAnual = baseImponible * 0.05;
+    } else {
+      isrAnual = 15000 + (baseImponible - 300000) * 0.07;
+    }
+    return Math.round((isrAnual / 12) * 100) / 100;
+  }
 
   async crearPeriodo(dto: CrearPeriodoDto) {
     let fechaInicio: Date;
@@ -19,7 +38,9 @@ export class NominaService {
       fechaFin = new Date(dto.anio, dto.mes, 0);
     } else {
       if (!dto.quincena) {
-        throw new BadRequestException('Debe especificar la quincena (1 o 2) para períodos quincenales');
+        throw new BadRequestException(
+          'Debe especificar la quincena (1 o 2) para períodos quincenales',
+        );
       }
       if (dto.quincena === 1) {
         fechaInicio = new Date(dto.anio, dto.mes - 1, 1);
@@ -35,7 +56,9 @@ export class NominaService {
     });
 
     if (periodoExistente) {
-      throw new BadRequestException('Ya existe un período de nómina para ese mes y tipo');
+      throw new BadRequestException(
+        'Ya existe un período de nómina para ese mes y tipo',
+      );
     }
 
     return this.prisma.periodoNomina.create({
@@ -81,32 +104,21 @@ export class NominaService {
     });
   }
 
-  // ==================== DETALLES ====================
-
-  private calcularISR(salarioBase: number): number {
-    const salarioAnual = salarioBase * 12;
-    if (salarioAnual <= 48000) return 0;
-    const baseImponible = salarioAnual - 48000;
-    let isrAnual = 0;
-    if (baseImponible <= 300000) {
-      isrAnual = baseImponible * 0.05;
-    } else {
-      isrAnual = 15000 + (baseImponible - 300000) * 0.07;
-    }
-    return Math.round((isrAnual / 12) * 100) / 100;
-  }
-
   async agregarDetalle(dto: CrearDetalleDto) {
     const periodo = await this.prisma.periodoNomina.findUnique({
       where: { id: dto.periodoNominaId },
     });
 
     if (!periodo) {
-      throw new NotFoundException(`Período con ID ${dto.periodoNominaId} no encontrado`);
+      throw new NotFoundException(
+        `Período con ID ${dto.periodoNominaId} no encontrado`,
+      );
     }
 
     if (periodo.estado === 'CERRADO') {
-      throw new BadRequestException('No se pueden agregar detalles a un período cerrado');
+      throw new BadRequestException(
+        'No se pueden agregar detalles a un período cerrado',
+      );
     }
 
     const empleado = await this.prisma.empleado.findUnique({
@@ -114,11 +126,15 @@ export class NominaService {
     });
 
     if (!empleado) {
-      throw new NotFoundException(`Empleado con ID ${dto.empleadoId} no encontrado`);
+      throw new NotFoundException(
+        `Empleado con ID ${dto.empleadoId} no encontrado`,
+      );
     }
 
     if (empleado.estadoLaboral === 'RETIRADO') {
-      throw new BadRequestException('No se puede agregar a nómina un empleado con estado RETIRADO');
+      throw new BadRequestException(
+        'No se puede agregar a nómina un empleado con estado RETIRADO',
+      );
     }
 
     const existente = await this.prisma.detalleNomina.findUnique({
@@ -131,39 +147,60 @@ export class NominaService {
     });
 
     if (existente) {
-      throw new BadRequestException('Este empleado ya tiene un detalle en este período');
+      throw new BadRequestException(
+        'Este empleado ya tiene un detalle en este período',
+      );
     }
 
     const fechaInicioPeriodo = new Date(periodo.fechaInicio);
     const fechaFinPeriodo = new Date(periodo.fechaFin);
-    const diasTotalesPeriodo = Math.ceil(
-      (fechaFinPeriodo.getTime() - fechaInicioPeriodo.getTime()) / (1000 * 60 * 60 * 24)
-    ) + 1;
+    const diasTotalesPeriodo =
+      Math.ceil(
+        (fechaFinPeriodo.getTime() - fechaInicioPeriodo.getTime()) /
+          (1000 * 60 * 60 * 24),
+      ) + 1;
 
-    const fechaContratacion = empleado.creadoEn ? new Date(empleado.creadoEn) : fechaInicioPeriodo;
+    const fechaContratacion = empleado.creadoEn
+      ? new Date(empleado.creadoEn)
+      : fechaInicioPeriodo;
     let diasTrabajados = diasTotalesPeriodo;
 
-    if (fechaContratacion > fechaInicioPeriodo && fechaContratacion <= fechaFinPeriodo) {
-      diasTrabajados = Math.ceil(
-        (fechaFinPeriodo.getTime() - fechaContratacion.getTime()) / (1000 * 60 * 60 * 24)
-      ) + 1;
+    if (
+      fechaContratacion > fechaInicioPeriodo &&
+      fechaContratacion <= fechaFinPeriodo
+    ) {
+      diasTrabajados =
+        Math.ceil(
+          (fechaFinPeriodo.getTime() - fechaContratacion.getTime()) /
+            (1000 * 60 * 60 * 24),
+        ) + 1;
     }
 
     const salarioCompleto = Number(empleado.salarioBase);
-    const salarioBase = diasTrabajados < diasTotalesPeriodo
-      ? Math.round((salarioCompleto / diasTotalesPeriodo) * diasTrabajados * 100) / 100
-      : salarioCompleto;
+    const salarioBase =
+      diasTrabajados < diasTotalesPeriodo
+        ? Math.round(
+            ((salarioCompleto / diasTotalesPeriodo) * diasTrabajados * 100) /
+              100,
+          )
+        : salarioCompleto;
 
     const horasExtra = dto.horasExtra || 0;
-    const bonificaciones = dto.bonificaciones || 0;
-    const deduccionesAdicionales = dto.deducciones || 0;
+    const bonificaciones = BONIFICACION_LEY;
     const igss = Math.round(salarioBase * 0.0483 * 100) / 100;
-    const irtra = Math.round(salarioBase * 0.01 * 100) / 100;
     const isr = this.calcularISR(salarioBase);
-    const deducciones = Math.round((deduccionesAdicionales + isr) * 100) / 100;
+    const irtra = 0;
+    const deducciones = Math.round(isr * 100) / 100;
     const salarioNeto = Math.round(
-      (salarioBase + horasExtra + bonificaciones - deducciones - igss - irtra) * 100
-    ) / 100;
+      ((salarioBase +
+        horasExtra +
+        bonificaciones -
+        deducciones -
+        igss -
+        irtra) *
+        100) /
+        100,
+    );
 
     return this.prisma.detalleNomina.create({
       data: {
@@ -192,33 +229,35 @@ export class NominaService {
     }
 
     if (detalle.periodoNomina.estado === 'CERRADO') {
-      throw new BadRequestException('No se puede recalcular un detalle de período cerrado');
+      throw new BadRequestException(
+        'No se puede recalcular un detalle de período cerrado',
+      );
     }
 
     const salarioBase = Number(detalle.salarioBase);
     const horasExtra = Number(detalle.horasExtra);
-    const bonificaciones = Number(detalle.bonificaciones);
-    const deducciones = Number(detalle.deducciones);
+    const bonificaciones = BONIFICACION_LEY;
     const igss = Math.round(salarioBase * 0.0483 * 100) / 100;
-    const irtra = Math.round(salarioBase * 0.01 * 100) / 100;
     const isr = this.calcularISR(salarioBase);
-    const deduccionesTotal = Math.round((deducciones + isr) * 100) / 100;
+    const irtra = 0;
+    const deducciones = Math.round(isr * 100) / 100;
     const salarioNeto = Math.round(
-      (salarioBase + horasExtra + bonificaciones - deduccionesTotal - igss - irtra) * 100
-    ) / 100;
+      ((salarioBase +
+        horasExtra +
+        bonificaciones -
+        deducciones -
+        igss -
+        irtra) *
+        100) /
+        100,
+    );
 
     return this.prisma.detalleNomina.update({
       where: { id },
-      data: {
-        igss,
-        irtra,
-        salarioNeto,
-      },
+      data: { bonificaciones, deducciones, igss, irtra, salarioNeto },
       include: { empleado: true },
     });
   }
-
-  // ==================== AJUSTES ====================
 
   async realizarAjuste(dto: AjusteNominaDto, usuarioId: number) {
     const detalle = await this.prisma.detalleNomina.findUnique({
@@ -227,16 +266,22 @@ export class NominaService {
     });
 
     if (!detalle) {
-      throw new NotFoundException(`Detalle con ID ${dto.detalleNominaId} no encontrado`);
+      throw new NotFoundException(
+        `Detalle con ID ${dto.detalleNominaId} no encontrado`,
+      );
     }
 
     if (detalle.periodoNomina.estado === 'CERRADO') {
-      throw new BadRequestException('No se pueden realizar ajustes en un período cerrado');
+      throw new BadRequestException(
+        'No se pueden realizar ajustes en un período cerrado',
+      );
     }
 
-    const camposPermitidos = ['horasExtra', 'bonificaciones', 'deducciones'];
+    const camposPermitidos = ['horasExtra'];
     if (!camposPermitidos.includes(dto.campo)) {
-      throw new BadRequestException(`Campo no válido. Campos permitidos: ${camposPermitidos.join(', ')}`);
+      throw new BadRequestException(
+        'Campo no válido. Solo se permite ajustar: horasExtra',
+      );
     }
 
     const valorAnterior = Number(detalle[dto.campo as keyof typeof detalle]);
@@ -263,7 +308,9 @@ export class NominaService {
   async obtenerAjustes(detalleId: number) {
     return this.prisma.ajusteNomina.findMany({
       where: { detalleNominaId: detalleId },
-      include: { ajustadoPorUsuario: { select: { correo: true, rol: true } } },
+      include: {
+        ajustadoPorUsuario: { select: { correo: true, rol: true } },
+      },
       orderBy: { fechaAjuste: 'desc' },
     });
   }
