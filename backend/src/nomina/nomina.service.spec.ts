@@ -1,317 +1,92 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { NominaService } from './nomina.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { CrearPeriodoDto } from './dto/crear-periodo.dto';
-import { CrearDetalleDto } from './dto/crear-detalle.dto';
-import { AjusteNominaDto } from './dto/ajuste-nomina.dto';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 
-const SALARIO_MINIMO = 4000;
-const BONIFICACION_LEY = 250;
+describe('NominaService', () => {
+  let service: NominaService;
 
-@Injectable()
-export class NominaService {
-  constructor(private prisma: PrismaService) {}
+  const mockPrismaService = {
+    periodoNomina: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
+    detalleNomina: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
+    empleado: {
+      findUnique: jest.fn(),
+    },
+    ajusteNomina: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+    },
+  };
 
-  private calcularISR(salarioBase: number): number {
-    if (salarioBase <= SALARIO_MINIMO) return 0;
-    const salarioAnual = salarioBase * 12;
-    const baseImponible = salarioAnual - 48000;
-    if (baseImponible <= 0) return 0;
-    let isrAnual = 0;
-    if (baseImponible <= 300000) {
-      isrAnual = baseImponible * 0.05;
-    } else {
-      isrAnual = 15000 + (baseImponible - 300000) * 0.07;
-    }
-    return Math.round((isrAnual / 12) * 100) / 100;
-  }
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        NominaService,
+        { provide: PrismaService, useValue: mockPrismaService },
+      ],
+    }).compile();
 
-  async crearPeriodo(dto: CrearPeriodoDto) {
-    let fechaInicio: Date;
-    let fechaFin: Date;
+    service = module.get<NominaService>(NominaService);
+  });
 
-    if (dto.tipoPeriodo === 'MENSUAL') {
-      fechaInicio = new Date(dto.anio, dto.mes - 1, 1);
-      fechaFin = new Date(dto.anio, dto.mes, 0);
-    } else {
-      if (!dto.quincena) {
-        throw new BadRequestException(
-          'Debe especificar la quincena (1 o 2) para períodos quincenales',
-        );
-      }
-      if (dto.quincena === 1) {
-        fechaInicio = new Date(dto.anio, dto.mes - 1, 1);
-        fechaFin = new Date(dto.anio, dto.mes - 1, 15);
-      } else {
-        fechaInicio = new Date(dto.anio, dto.mes - 1, 16);
-        fechaFin = new Date(dto.anio, dto.mes, 0);
-      }
-    }
+  it('debería estar definido', () => {
+    expect(service).toBeDefined();
+  });
 
-    const periodoExistente = await this.prisma.periodoNomina.findFirst({
-      where: { tipoPeriodo: dto.tipoPeriodo, fechaInicio, fechaFin },
+  it('debería crear un período mensual correctamente', async () => {
+    mockPrismaService.periodoNomina.findFirst.mockResolvedValue(null);
+    mockPrismaService.periodoNomina.create.mockResolvedValue({
+      id: 1, tipoPeriodo: 'MENSUAL', estado: 'ABIERTO',
+      fechaInicio: new Date('2026-05-01'),
+      fechaFin: new Date('2026-05-31'),
     });
-
-    if (periodoExistente) {
-      throw new BadRequestException(
-        'Ya existe un período de nómina para ese mes y tipo',
-      );
-    }
-
-    return this.prisma.periodoNomina.create({
-      data: {
-        tipoPeriodo: dto.tipoPeriodo,
-        fechaInicio,
-        fechaFin,
-        estado: 'ABIERTO',
-      },
+    const resultado = await service.crearPeriodo({
+      tipoPeriodo: 'MENSUAL', mes: 5, anio: 2026,
     });
-  }
+    expect(resultado.tipoPeriodo).toBe('MENSUAL');
+    expect(resultado.estado).toBe('ABIERTO');
+  });
 
-  async obtenerPeriodos() {
-    return this.prisma.periodoNomina.findMany({
-      include: { detalles: { include: { empleado: true } } },
-      orderBy: { id: 'desc' },
+  it('debería lanzar error si el período ya existe', async () => {
+    mockPrismaService.periodoNomina.findFirst.mockResolvedValue({
+      id: 1, tipoPeriodo: 'MENSUAL', estado: 'ABIERTO',
     });
-  }
+    await expect(
+      service.crearPeriodo({ tipoPeriodo: 'MENSUAL', mes: 5, anio: 2026 }),
+    ).rejects.toThrow(BadRequestException);
+  });
 
-  async obtenerPeriodoPorId(id: number) {
-    const periodo = await this.prisma.periodoNomina.findUnique({
-      where: { id },
-      include: { detalles: { include: { empleado: true, ajustes: true } } },
+  it('debería lanzar error si el período no existe', async () => {
+    mockPrismaService.periodoNomina.findUnique.mockResolvedValue(null);
+    await expect(service.obtenerPeriodoPorId(999)).rejects.toThrow(NotFoundException);
+  });
+
+  it('debería lanzar error al agregar quincena sin especificar número', async () => {
+    await expect(
+      service.crearPeriodo({ tipoPeriodo: 'QUINCENAL', mes: 5, anio: 2026 }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('debería cerrar un período abierto', async () => {
+    mockPrismaService.periodoNomina.findUnique.mockResolvedValue({
+      id: 1, tipoPeriodo: 'MENSUAL', estado: 'ABIERTO', detalles: [],
     });
-
-    if (!periodo) {
-      throw new NotFoundException(`Período con ID ${id} no encontrado`);
-    }
-
-    return periodo;
-  }
-
-  async cerrarPeriodo(id: number) {
-    const periodo = await this.obtenerPeriodoPorId(id);
-
-    if (periodo.estado === 'CERRADO') {
-      throw new BadRequestException('Este período ya está cerrado');
-    }
-
-    return this.prisma.periodoNomina.update({
-      where: { id },
-      data: { estado: 'CERRADO' },
+    mockPrismaService.periodoNomina.update.mockResolvedValue({
+      id: 1, estado: 'CERRADO',
     });
-  }
-
-  async agregarDetalle(dto: CrearDetalleDto) {
-    const periodo = await this.prisma.periodoNomina.findUnique({
-      where: { id: dto.periodoNominaId },
-    });
-
-    if (!periodo) {
-      throw new NotFoundException(
-        `Período con ID ${dto.periodoNominaId} no encontrado`,
-      );
-    }
-
-    if (periodo.estado === 'CERRADO') {
-      throw new BadRequestException(
-        'No se pueden agregar detalles a un período cerrado',
-      );
-    }
-
-    const empleado = await this.prisma.empleado.findUnique({
-      where: { id: dto.empleadoId },
-    });
-
-    if (!empleado) {
-      throw new NotFoundException(
-        `Empleado con ID ${dto.empleadoId} no encontrado`,
-      );
-    }
-
-    if (empleado.estadoLaboral === 'RETIRADO') {
-      throw new BadRequestException(
-        'No se puede agregar a nómina un empleado con estado RETIRADO',
-      );
-    }
-
-    const existente = await this.prisma.detalleNomina.findUnique({
-      where: {
-        periodoNominaId_empleadoId: {
-          periodoNominaId: dto.periodoNominaId,
-          empleadoId: dto.empleadoId,
-        },
-      },
-    });
-
-    if (existente) {
-      throw new BadRequestException(
-        'Este empleado ya tiene un detalle en este período',
-      );
-    }
-
-    const fechaInicioPeriodo = new Date(periodo.fechaInicio);
-    const fechaFinPeriodo = new Date(periodo.fechaFin);
-    const diasTotalesPeriodo =
-      Math.ceil(
-        (fechaFinPeriodo.getTime() - fechaInicioPeriodo.getTime()) /
-          (1000 * 60 * 60 * 24),
-      ) + 1;
-
-    const fechaContratacion = empleado.creadoEn
-      ? new Date(empleado.creadoEn)
-      : fechaInicioPeriodo;
-    let diasTrabajados = diasTotalesPeriodo;
-
-    if (
-      fechaContratacion > fechaInicioPeriodo &&
-      fechaContratacion <= fechaFinPeriodo
-    ) {
-      diasTrabajados =
-        Math.ceil(
-          (fechaFinPeriodo.getTime() - fechaContratacion.getTime()) /
-            (1000 * 60 * 60 * 24),
-        ) + 1;
-    }
-
-    const salarioCompleto = Number(empleado.salarioBase);
-    const salarioBase =
-      diasTrabajados < diasTotalesPeriodo
-        ? Math.round(
-            ((salarioCompleto / diasTotalesPeriodo) * diasTrabajados * 100) /
-              100,
-          )
-        : salarioCompleto;
-
-    const horasExtra = dto.horasExtra || 0;
-    const bonificaciones = BONIFICACION_LEY;
-    const igss = Math.round(salarioBase * 0.0483 * 100) / 100;
-    const isr = this.calcularISR(salarioBase);
-    const irtra = 0;
-    const deducciones = Math.round(isr * 100) / 100;
-    const salarioNeto = Math.round(
-      ((salarioBase +
-        horasExtra +
-        bonificaciones -
-        deducciones -
-        igss -
-        irtra) *
-        100) /
-        100,
-    );
-
-    return this.prisma.detalleNomina.create({
-      data: {
-        periodoNominaId: dto.periodoNominaId,
-        empleadoId: dto.empleadoId,
-        salarioBase,
-        horasExtra,
-        bonificaciones,
-        deducciones,
-        igss,
-        irtra,
-        salarioNeto,
-      },
-      include: { empleado: true },
-    });
-  }
-
-  async recalcularDetalle(id: number) {
-    const detalle = await this.prisma.detalleNomina.findUnique({
-      where: { id },
-      include: { periodoNomina: true },
-    });
-
-    if (!detalle) {
-      throw new NotFoundException(`Detalle con ID ${id} no encontrado`);
-    }
-
-    if (detalle.periodoNomina.estado === 'CERRADO') {
-      throw new BadRequestException(
-        'No se puede recalcular un detalle de período cerrado',
-      );
-    }
-
-    const salarioBase = Number(detalle.salarioBase);
-    const horasExtra = Number(detalle.horasExtra);
-    const bonificaciones = BONIFICACION_LEY;
-    const igss = Math.round(salarioBase * 0.0483 * 100) / 100;
-    const isr = this.calcularISR(salarioBase);
-    const irtra = 0;
-    const deducciones = Math.round(isr * 100) / 100;
-    const salarioNeto = Math.round(
-      ((salarioBase +
-        horasExtra +
-        bonificaciones -
-        deducciones -
-        igss -
-        irtra) *
-        100) /
-        100,
-    );
-
-    return this.prisma.detalleNomina.update({
-      where: { id },
-      data: { bonificaciones, deducciones, igss, irtra, salarioNeto },
-      include: { empleado: true },
-    });
-  }
-
-  async realizarAjuste(dto: AjusteNominaDto, usuarioId: number) {
-    const detalle = await this.prisma.detalleNomina.findUnique({
-      where: { id: dto.detalleNominaId },
-      include: { periodoNomina: true },
-    });
-
-    if (!detalle) {
-      throw new NotFoundException(
-        `Detalle con ID ${dto.detalleNominaId} no encontrado`,
-      );
-    }
-
-    if (detalle.periodoNomina.estado === 'CERRADO') {
-      throw new BadRequestException(
-        'No se pueden realizar ajustes en un período cerrado',
-      );
-    }
-
-    const camposPermitidos = ['horasExtra'];
-    if (!camposPermitidos.includes(dto.campo)) {
-      throw new BadRequestException(
-        'Campo no válido. Solo se permite ajustar: horasExtra',
-      );
-    }
-
-    const valorAnterior = Number(detalle[dto.campo as keyof typeof detalle]);
-
-    await this.prisma.ajusteNomina.create({
-      data: {
-        detalleNominaId: dto.detalleNominaId,
-        ajustadoPorUsuarioId: usuarioId,
-        campo: dto.campo,
-        valorAnterior,
-        valorNuevo: dto.valorNuevo,
-        motivo: dto.motivo,
-      },
-    });
-
-    await this.prisma.detalleNomina.update({
-      where: { id: dto.detalleNominaId },
-      data: { [dto.campo]: dto.valorNuevo },
-    });
-
-    return this.recalcularDetalle(dto.detalleNominaId);
-  }
-
-  async obtenerAjustes(detalleId: number) {
-    return this.prisma.ajusteNomina.findMany({
-      where: { detalleNominaId: detalleId },
-      include: {
-        ajustadoPorUsuario: { select: { correo: true, rol: true } },
-      },
-      orderBy: { fechaAjuste: 'desc' },
-    });
-  }
-}
+    const resultado = await service.cerrarPeriodo(1);
+    expect(resultado.estado).toBe('CERRADO');
+  });
+});
