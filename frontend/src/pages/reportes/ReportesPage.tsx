@@ -35,6 +35,8 @@ export default function ReportesPage() {
     cargarPeriodos();
   }, []);
 
+  const periodoSeleccionado = periodos.find((p: any) => p.id === Number(periodoId));
+
   const cargarReporteNomina = async () => {
     if (!periodoId) return setError('Seleccione un período');
     try {
@@ -136,7 +138,7 @@ export default function ReportesPage() {
                 {cargando ? <CircularProgress size={24} /> : 'Generar Reporte'}
               </Button>
               {datosNomina && !datosNomina.error && (
-                <Button variant="contained" color="error" startIcon={<Download />} onClick={() => descargarPDF(refNomina, 'reporte_nomina')}>
+                <Button variant="contained" color="error" startIcon={<Download />} onClick={() => descargarPDF(refNomina, `reporte_nomina_${periodoSeleccionado?.tipoPeriodo}_${new Date(periodoSeleccionado?.fechaInicio).toLocaleDateString('es-GT')}`)}>
                   Descargar PDF
                 </Button>
               )}
@@ -145,26 +147,39 @@ export default function ReportesPage() {
 
           {datosNomina && !datosNomina.error && (
             <div ref={refNomina}>
+              {/* ENCABEZADO DEL REPORTE */}
+              <Box sx={{ textAlign: 'center', mb: 3, pb: 2, borderBottom: '2px solid #2E5090' }}>
+                <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#2E5090' }}>REPORTE DE NÓMINA</Typography>
+                <Typography variant="h6">Empresa, S.A. — NIT: 000000-0</Typography>
+                <Typography variant="body1" sx={{ mt: 1 }}>
+                  Período: {periodoSeleccionado?.tipoPeriodo} — {new Date(periodoSeleccionado?.fechaInicio).toLocaleDateString('es-GT')} al {new Date(periodoSeleccionado?.fechaFin).toLocaleDateString('es-GT')}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Estado: {periodoSeleccionado?.estado} | Fecha de generación: {new Date().toLocaleDateString('es-GT')}
+                </Typography>
+              </Box>
+
+              {/* TARJETAS RESUMEN */}
               <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                <Card sx={{ flex: 1 }}>
+                <Card sx={{ flex: 1, borderTop: '3px solid #2E5090' }}>
                   <CardContent>
                     <Typography color="text.secondary" variant="body2">Total Empleados</Typography>
                     <Typography variant="h4" sx={{ fontWeight: 'bold' }}>{datosNomina.resumen.totalEmpleados}</Typography>
                   </CardContent>
                 </Card>
-                <Card sx={{ flex: 1 }}>
+                <Card sx={{ flex: 1, borderTop: '3px solid #2E5090' }}>
                   <CardContent>
-                    <Typography color="text.secondary" variant="body2">Total Bruto</Typography>
+                    <Typography color="text.secondary" variant="body2">Total Ingresos</Typography>
                     <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2E5090' }}>Q{datosNomina.resumen.totalBruto.toFixed(2)}</Typography>
                   </CardContent>
                 </Card>
-                <Card sx={{ flex: 1 }}>
+                <Card sx={{ flex: 1, borderTop: '3px solid #e74c3c' }}>
                   <CardContent>
-                    <Typography color="text.secondary" variant="body2">Total Deducciones</Typography>
+                    <Typography color="text.secondary" variant="body2">Total Descuentos</Typography>
                     <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#e74c3c' }}>Q{datosNomina.resumen.totalDeducciones.toFixed(2)}</Typography>
                   </CardContent>
                 </Card>
-                <Card sx={{ flex: 1 }}>
+                <Card sx={{ flex: 1, borderTop: '3px solid #27ae60' }}>
                   <CardContent>
                     <Typography color="text.secondary" variant="body2">Total Neto</Typography>
                     <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#27ae60' }}>Q{datosNomina.resumen.totalNeto.toFixed(2)}</Typography>
@@ -172,18 +187,18 @@ export default function ReportesPage() {
                 </Card>
               </Box>
 
-              <TableContainer component={Paper}>
-                <Table>
+              {/* TABLA DE INGRESOS */}
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#2E5090', backgroundColor: '#e8f0fe', p: 1, borderRadius: 1 }}>DETALLE DE INGRESOS</Typography>
+              <TableContainer component={Paper} sx={{ mb: 3 }}>
+                <Table size="small">
                   <TableHead>
                     <TableRow sx={{ backgroundColor: '#2E5090' }}>
                       <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Empleado</TableCell>
                       <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Departamento</TableCell>
                       <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Salario Base</TableCell>
-                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Horas Extra</TableCell>
                       <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Bonificación Ley</TableCell>
-                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">IGSS</TableCell>
-                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">ISR</TableCell>
-                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Neto</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Horas Extra</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Total Ingresos</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -192,13 +207,79 @@ export default function ReportesPage() {
                         <TableCell>{d.empleado}</TableCell>
                         <TableCell>{d.departamento}</TableCell>
                         <TableCell align="right">Q{d.salarioBase.toFixed(2)}</TableCell>
-                        <TableCell align="right">Q{d.horasExtra.toFixed(2)}</TableCell>
                         <TableCell align="right">Q{d.bonificaciones.toFixed(2)}</TableCell>
-                        <TableCell align="right">Q{d.igss.toFixed(2)}</TableCell>
-                        <TableCell align="right">Q{d.deducciones.toFixed(2)}</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>Q{d.salarioNeto.toFixed(2)}</TableCell>
+                        <TableCell align="right">Q{d.horasExtra.toFixed(2)}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>Q{(d.salarioBase + d.bonificaciones + d.horasExtra).toFixed(2)}</TableCell>
                       </TableRow>
                     ))}
+                    <TableRow sx={{ backgroundColor: '#e8f4fd' }}>
+                      <TableCell colSpan={5} sx={{ fontWeight: 'bold' }}>TOTAL INGRESOS</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 'bold' }}>Q{datosNomina.detalles.reduce((sum: number, d: any) => sum + d.salarioBase + d.bonificaciones + d.horasExtra, 0).toFixed(2)}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              {/* TABLA DE DESCUENTOS */}
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#e74c3c', backgroundColor: '#ffeaea', p: 1, borderRadius: 1 }}>DETALLE DE DESCUENTOS</Typography>
+              <TableContainer component={Paper} sx={{ mb: 3 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: '#c0392b' }}>
+                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Empleado</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Departamento</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">IGSS (4.83%)</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">ISR</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Total Descuentos</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {datosNomina.detalles.map((d: any, i: number) => (
+                      <TableRow key={i} hover>
+                        <TableCell>{d.empleado}</TableCell>
+                        <TableCell>{d.departamento}</TableCell>
+                        <TableCell align="right">Q{d.igss.toFixed(2)}</TableCell>
+                        <TableCell align="right">Q{d.deducciones.toFixed(2)}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 'bold', color: '#e74c3c' }}>Q{(d.igss + d.deducciones).toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow sx={{ backgroundColor: '#ffeaea' }}>
+                      <TableCell colSpan={4} sx={{ fontWeight: 'bold' }}>TOTAL DESCUENTOS</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 'bold', color: '#e74c3c' }}>Q{datosNomina.detalles.reduce((sum: number, d: any) => sum + d.igss + d.deducciones, 0).toFixed(2)}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              {/* TABLA RESUMEN NETO */}
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: '#27ae60', backgroundColor: '#e8f8e8', p: 1, borderRadius: 1 }}>RESUMEN - LÍQUIDO A RECIBIR</Typography>
+              <TableContainer component={Paper}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: '#27ae60' }}>
+                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Empleado</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Departamento</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Total Ingresos</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Total Descuentos</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Líquido a Recibir</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {datosNomina.detalles.map((d: any, i: number) => (
+                      <TableRow key={i} hover>
+                        <TableCell>{d.empleado}</TableCell>
+                        <TableCell>{d.departamento}</TableCell>
+                        <TableCell align="right">Q{(d.salarioBase + d.bonificaciones + d.horasExtra).toFixed(2)}</TableCell>
+                        <TableCell align="right" sx={{ color: '#e74c3c' }}>Q{(d.igss + d.deducciones).toFixed(2)}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 'bold', color: '#27ae60' }}>Q{d.salarioNeto.toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow sx={{ backgroundColor: '#c6efce' }}>
+                      <TableCell colSpan={2} sx={{ fontWeight: 'bold' }}>TOTALES GENERALES</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 'bold' }}>Q{datosNomina.detalles.reduce((sum: number, d: any) => sum + d.salarioBase + d.bonificaciones + d.horasExtra, 0).toFixed(2)}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 'bold', color: '#e74c3c' }}>Q{datosNomina.detalles.reduce((sum: number, d: any) => sum + d.igss + d.deducciones, 0).toFixed(2)}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 'bold', color: '#27ae60' }}>Q{datosNomina.resumen.totalNeto.toFixed(2)}</TableCell>
+                    </TableRow>
                   </TableBody>
                 </Table>
               </TableContainer>
