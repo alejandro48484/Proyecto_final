@@ -23,6 +23,7 @@ export default function NominaPage() {
   const [error, setError] = useState('');
   useAutoLimpiarError(error, setError);
   const [exito, setExito] = useState('');
+  useAutoLimpiarError(exito, setExito);
   const [dialogoPeriodo, setDialogoPeriodo] = useState(false);
   const [dialogoDetalle, setDialogoDetalle] = useState(false);
   const [dialogoAjuste, setDialogoAjuste] = useState(false);
@@ -86,7 +87,7 @@ export default function NominaPage() {
       setDialogoPeriodo(false);
       cargarDatos();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al crear período');
+      setError(err.response?.data?.mensaje || err.response?.data?.message || 'Error al crear período');
     }
   };
 
@@ -98,7 +99,7 @@ export default function NominaPage() {
       cargarDatos();
       if (periodoSeleccionado?.id === id) cargarPeriodo(id);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al cerrar período');
+      setError(err.response?.data?.mensaje || err.response?.data?.message || 'Error al cerrar período');
     }
   };
 
@@ -114,7 +115,7 @@ export default function NominaPage() {
       setDialogoDetalle(false);
       if (formDetalle.periodoNominaId) cargarPeriodo(formDetalle.periodoNominaId);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al agregar detalle');
+      setError(err.response?.data?.mensaje || err.response?.data?.message || 'Error al agregar detalle');
     }
   };
 
@@ -151,7 +152,7 @@ export default function NominaPage() {
       setDepartamentoFiltro('');
       cargarPeriodo(periodoSeleccionado.id);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al agregar empleados');
+      setError(err.response?.data?.mensaje || err.response?.data?.message || 'Error al agregar empleados');
     } finally {
       setCargandoMasivo(false);
     }
@@ -184,7 +185,7 @@ export default function NominaPage() {
       setExito(`${exitosos} empleado(s) agregado(s) exitosamente`);
       cargarPeriodo(periodoSeleccionado.id);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al agregar empleados');
+      setError(err.response?.data?.mensaje || err.response?.data?.message || 'Error al agregar empleados');
     } finally {
       setCargandoMasivo(false);
     }
@@ -196,7 +197,7 @@ export default function NominaPage() {
       setExito('Recalculado exitosamente');
       if (periodoSeleccionado) cargarPeriodo(periodoSeleccionado.id);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al recalcular');
+      setError(err.response?.data?.mensaje || err.response?.data?.message || 'Error al recalcular');
     }
   };
 
@@ -214,7 +215,7 @@ export default function NominaPage() {
       setDialogoAjuste(false);
       if (periodoSeleccionado) cargarPeriodo(periodoSeleccionado.id);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al realizar ajuste');
+      setError(err.response?.data?.mensaje || err.response?.data?.message || 'Error al realizar ajuste');
     }
   };
 
@@ -226,7 +227,7 @@ export default function NominaPage() {
       setDatosVoucher(res.data.voucher);
       setDialogoVoucher(true);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al cargar voucher');
+      setError(err.response?.data?.mensaje || err.response?.data?.message || 'Error al cargar voucher');
     } finally {
       setCargandoVoucher(false);
     }
@@ -248,6 +249,11 @@ export default function NominaPage() {
     if (departamentoFiltro) return e.departamentoId === Number(departamentoFiltro);
     return true;
   });
+
+  const formatearFecha = (fecha: string) => {
+  const f = new Date(fecha);
+  return new Date(f.getUTCFullYear(), f.getUTCMonth(), f.getUTCDate()).toLocaleDateString('es-GT');
+};
 
   if (cargando) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
 
@@ -286,8 +292,8 @@ export default function NominaPage() {
                   <TableRow key={per.id} hover sx={{ cursor: 'pointer' }} onClick={() => { cargarPeriodo(per.id); setTab(1); }}>
                     <TableCell>{per.id}</TableCell>
                     <TableCell>{per.tipoPeriodo}</TableCell>
-                    <TableCell>{new Date(per.fechaInicio).toLocaleDateString('es-GT')}</TableCell>
-                    <TableCell>{new Date(per.fechaFin).toLocaleDateString('es-GT')}</TableCell>
+                    <TableCell>{formatearFecha(per.fechaInicio)}</TableCell>
+                    <TableCell>{formatearFecha(per.fechaFin)}</TableCell>
                     <TableCell><Chip label={per.estado} color={per.estado === 'ABIERTO' ? 'success' : 'default'} size="small" /></TableCell>
                     <TableCell>{per.detalles?.length || 0}</TableCell>
                     <TableCell>
@@ -318,7 +324,7 @@ export default function NominaPage() {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
                       <Typography variant="h6">
-                        Período {periodoSeleccionado.tipoPeriodo}: {new Date(periodoSeleccionado.fechaInicio).toLocaleDateString('es-GT')} - {new Date(periodoSeleccionado.fechaFin).toLocaleDateString('es-GT')}
+                        Período {periodoSeleccionado.tipoPeriodo}: {formatearFecha(periodoSeleccionado.fechaInicio)} - {formatearFecha(periodoSeleccionado.fechaFin)}
                       </Typography>
                       <Chip label={periodoSeleccionado.estado} color={periodoSeleccionado.estado === 'ABIERTO' ? 'success' : 'default'} size="small" sx={{ mt: 1 }} />
                     </Box>
@@ -518,7 +524,7 @@ export default function NominaPage() {
                   <Typography variant="body2"><strong>NIT:</strong> {datosVoucher.empleado?.dpi}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 2, mb: 1, flexWrap: 'wrap' }}>
-                  <Typography variant="body2"><strong>Período:</strong> {new Date(datosVoucher.periodo?.fechaInicio).toLocaleDateString('es-GT')} al {new Date(datosVoucher.periodo?.fechaFin).toLocaleDateString('es-GT')}</Typography>
+                  <Typography variant="body2"><strong>Período:</strong> {formatearFecha(datosVoucher.periodo?.fechaInicio)} al {formatearFecha(datosVoucher.periodo?.fechaFin)}</Typography>
                   <Typography variant="body2"><strong>División:</strong> {datosVoucher.empleado?.departamento}</Typography>
                   <Typography variant="body2"><strong>Puesto:</strong> {datosVoucher.empleado?.cargo}</Typography>
                 </Box>
