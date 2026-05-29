@@ -22,6 +22,8 @@ export default function NominaPage() {
   const [cargandoMasivo, setCargandoMasivo] = useState(false);
   const [error, setError] = useState('');
   useAutoLimpiarError(error, setError);
+  const [errorPeriodo, setErrorPeriodo] = useState('');
+  useAutoLimpiarError(errorPeriodo, setErrorPeriodo);
   const [exito, setExito] = useState('');
   useAutoLimpiarError(exito, setExito);
   const [dialogoPeriodo, setDialogoPeriodo] = useState(false);
@@ -78,18 +80,30 @@ export default function NominaPage() {
   };
 
   const crearPeriodo = async () => {
-    try {
-      setError('');
-      const datos: any = { tipoPeriodo, mes, anio };
-      if (tipoPeriodo === 'QUINCENAL') datos.quincena = quincena;
-      await cliente.post('/nomina/periodos', datos);
-      setExito('Período creado exitosamente');
-      setDialogoPeriodo(false);
-      cargarDatos();
-    } catch (err: any) {
-      setError(err.response?.data?.mensaje || err.response?.data?.message || 'Error al crear período');
+  try {
+    setErrorPeriodo('');
+
+    const datos: any = { tipoPeriodo, mes, anio };
+
+    if (tipoPeriodo === 'QUINCENAL') {
+      datos.quincena = quincena;
     }
-  };
+
+    await cliente.post('/nomina/periodos', datos);
+
+    setExito('Período creado exitosamente');
+    setDialogoPeriodo(false);
+    cargarDatos();
+
+  } catch (err: any) {
+
+    setErrorPeriodo(
+      err.response?.data?.mensaje ||
+      err.response?.data?.message ||
+      'Error al crear período'
+    );
+  }
+};
 
   const cerrarPeriodo = async (id: number) => {
     if (!confirm('¿Está seguro de cerrar este período? No podrá modificarlo después.')) return;
@@ -396,6 +410,15 @@ export default function NominaPage() {
       <Dialog open={dialogoPeriodo} onClose={() => setDialogoPeriodo(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Nuevo Período de Nómina</DialogTitle>
         <DialogContent>
+        {errorPeriodo && (
+  <Alert
+    severity="error"
+    sx={{ mb: 2 }}
+    onClose={() => setErrorPeriodo('')}
+  >
+    {errorPeriodo}
+  </Alert>
+)}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <TextField select label="Tipo de Período" value={tipoPeriodo} onChange={(e) => setTipoPeriodo(e.target.value)} fullWidth>
               <MenuItem value="MENSUAL">MENSUAL</MenuItem>

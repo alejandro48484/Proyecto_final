@@ -34,22 +34,24 @@ export class NominaService {
     let fechaFin: Date;
 
     if (dto.tipoPeriodo === 'MENSUAL') {
-      fechaInicio = new Date(dto.anio, dto.mes - 1, 1);
-      fechaFin = new Date(dto.anio, dto.mes, 0);
-    } else {
-      if (!dto.quincena) {
-        throw new BadRequestException(
-          'Debe especificar la quincena (1 o 2) para períodos quincenales',
-        );
-      }
-      if (dto.quincena === 1) {
-        fechaInicio = new Date(dto.anio, dto.mes - 1, 1);
-        fechaFin = new Date(dto.anio, dto.mes - 1, 15);
-      } else {
-        fechaInicio = new Date(dto.anio, dto.mes - 1, 16);
-        fechaFin = new Date(dto.anio, dto.mes, 0);
-      }
-    }
+  const ultimoDia = new Date(dto.anio, dto.mes, 0).getDate();
+  fechaInicio = new Date(Date.UTC(dto.anio, dto.mes - 1, 1));
+  fechaFin = new Date(Date.UTC(dto.anio, dto.mes - 1, ultimoDia));
+} else {
+  if (!dto.quincena) {
+    throw new BadRequestException(
+      'Debe especificar la quincena (1 o 2) para períodos quincenales',
+    );
+  }
+  if (dto.quincena === 1) {
+    fechaInicio = new Date(Date.UTC(dto.anio, dto.mes - 1, 1));
+    fechaFin = new Date(Date.UTC(dto.anio, dto.mes - 1, 15));
+  } else {
+    const ultimoDia = new Date(dto.anio, dto.mes, 0).getDate();
+    fechaInicio = new Date(Date.UTC(dto.anio, dto.mes - 1, 16));
+    fechaFin = new Date(Date.UTC(dto.anio, dto.mes - 1, ultimoDia));
+  }
+}
 
     const periodoExistente = await this.prisma.periodoNomina.findFirst({
       where: { tipoPeriodo: dto.tipoPeriodo, fechaInicio, fechaFin },
