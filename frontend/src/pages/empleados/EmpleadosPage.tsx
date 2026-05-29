@@ -17,6 +17,9 @@ export default function EmpleadosPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   const [errores, setErrores] = useState<any>({});
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroDepartamento, setFiltroDepartamento] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
   const [dialogoEstado, setDialogoEstado] = useState(false);
   const [editando, setEditando] = useState<Empleado | null>(null);
@@ -158,6 +161,30 @@ export default function EmpleadosPage() {
     }
   };
 
+  const empleadosFiltrados = empleados.filter((emp) => {
+
+  const nombreCompleto =
+    `${emp.nombres} ${emp.apellidos}`.toLowerCase();
+
+  const coincideBusqueda =
+    nombreCompleto.includes(busqueda.toLowerCase()) ||
+    emp.numeroDpi.includes(busqueda);
+
+  const coincideDepartamento =
+    !filtroDepartamento ||
+    emp.departamentoId === Number(filtroDepartamento);
+
+  const coincideEstado =
+    !filtroEstado ||
+    emp.estadoLaboral === filtroEstado;
+
+  return (
+    coincideBusqueda &&
+    coincideDepartamento &&
+    coincideEstado
+  );
+});
+
   const colorEstado = (estado: string) => {
     if (estado === 'ACTIVO') return 'success';
     if (estado === 'SUSPENDIDO') return 'warning';
@@ -175,6 +202,57 @@ export default function EmpleadosPage() {
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
 
+      <Box
+  sx={{
+    display: 'flex',
+    gap: 2,
+    mb: 3,
+    flexWrap: 'wrap',
+  }}
+>
+
+  <TextField
+    label="Buscar empleado"
+    placeholder="Nombre, apellido o DPI"
+    value={busqueda}
+    onChange={(e) => setBusqueda(e.target.value)}
+    size="small"
+    sx={{ minWidth: 250 }}
+  />
+
+  <TextField
+    select
+    label="Departamento"
+    value={filtroDepartamento}
+    onChange={(e) => setFiltroDepartamento(e.target.value)}
+    size="small"
+    sx={{ minWidth: 220 }}
+  >
+    <MenuItem value="">Todos</MenuItem>
+
+    {departamentos.map((d) => (
+      <MenuItem key={d.id} value={d.id}>
+        {d.nombre}
+      </MenuItem>
+    ))}
+  </TextField>
+
+  <TextField
+    select
+    label="Estado"
+    value={filtroEstado}
+    onChange={(e) => setFiltroEstado(e.target.value)}
+    size="small"
+    sx={{ minWidth: 180 }}
+  >
+    <MenuItem value="">Todos</MenuItem>
+    <MenuItem value="ACTIVO">ACTIVO</MenuItem>
+    <MenuItem value="SUSPENDIDO">SUSPENDIDO</MenuItem>
+    <MenuItem value="RETIRADO">RETIRADO</MenuItem>
+  </TextField>
+
+</Box>
+
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -190,7 +268,7 @@ export default function EmpleadosPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {empleados.map((emp) => (
+           {empleadosFiltrados.map((emp) => (
               <TableRow key={emp.id} hover>
                 <TableCell>{emp.id}</TableCell>
                 <TableCell>{emp.nombres} {emp.apellidos}</TableCell>
