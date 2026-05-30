@@ -318,6 +318,7 @@ async reporteNominaVoucherEmpleado(periodoId: number, empleadoId: number) {
         cargo: detalle.empleado.cargo,
         departamento: detalle.empleado.departamento?.nombre || 'Sin departamento',
         dpi: detalle.empleado.numeroDpi,
+        fechaContratacion: detalle.empleado.creadoEn || null,
       },
       desglose: {
         salarioBase: Number(detalle.salarioBase),
