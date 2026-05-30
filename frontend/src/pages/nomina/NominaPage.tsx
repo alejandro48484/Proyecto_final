@@ -532,7 +532,7 @@ export default function NominaPage() {
               <Box sx={{ p: 2, border: '1px solid #ccc', borderRadius: 1 }}>
                 <Typography variant="h6" align="center" sx={{ fontWeight: 'bold', mb: 0.5 }}>RECIBO DE PAGO MENSUAL</Typography>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                  <Typography variant="body2">Fecha de contratación: {datosVoucher.empleado?.fechaContratacion ? new Date(datosVoucher.empleado.fechaContratacion).toLocaleDateString('es-GT') : 'N/A'}</Typography>
+                 <Typography variant="body2">Fecha de contratación: {datosVoucher.empleado?.fechaContratacion ? new Date(datosVoucher.empleado.fechaContratacion).toLocaleDateString('es-GT') : 'N/A'}</Typography>
                   <Box sx={{ textAlign: 'right' }}>
                     <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Empresa, S.A.</Typography>
                     <Typography variant="body2">NIT: 000000-0</Typography>
