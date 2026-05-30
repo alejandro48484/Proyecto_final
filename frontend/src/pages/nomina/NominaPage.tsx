@@ -181,21 +181,22 @@ export default function NominaPage() {
       const yaEnNomina = periodoSeleccionado.detalles?.map((d: any) => d.empleadoId) || [];
       const empleadosNuevos = empleadosActivos.filter((e: any) => !yaEnNomina.includes(e.id));
       if (empleadosNuevos.length === 0) {
-        setError('Todos los empleados ya están en este período');
+        setExito('Todos los empleados ya están en este período');
         setCargandoMasivo(false);
         return;
       }
       let exitosos = 0;
-      for (const emp of empleadosNuevos) {
-        try {
-          await cliente.post('/nomina/detalles', {
-            periodoNominaId: periodoSeleccionado.id,
-            empleadoId: emp.id,
-            horasExtra: 0,
-          });
-          exitosos++;
-        } catch { }
-      }
+        for (const emp of empleadosNuevos) {
+      try {
+        await cliente.post('/nomina/detalles', {
+          periodoNominaId: periodoSeleccionado.id,
+          empleadoId: emp.id,
+          horasExtra: 0,
+        });
+        exitosos++;
+      } catch { }
+      await new Promise(resolve => setTimeout(resolve, 400));
+    }
       setExito(`${exitosos} empleado(s) agregado(s) exitosamente`);
       cargarPeriodo(periodoSeleccionado.id);
     } catch (err: any) {
@@ -347,8 +348,10 @@ export default function NominaPage() {
                         <Button variant="outlined" startIcon={<Group />} onClick={() => setDialogoMasivo(true)}>
                           Agregar por Departamento
                         </Button>
-                        <Button variant="contained" startIcon={<GroupAdd />} onClick={() => { setDepartamentoFiltro(''); agregarTodos(); }}>
-                          Agregar Todos
+                        <Button variant="contained" startIcon={cargandoMasivo ? <CircularProgress size={16} color="inherit" /> : <GroupAdd />} 
+                          onClick={() => { setDepartamentoFiltro(''); agregarTodos(); }}
+                          disabled={cargandoMasivo}>
+                          {cargandoMasivo ? 'Agregando...' : 'Agregar Todos'}
                         </Button>
                         <Button variant="contained" color="secondary" startIcon={<Add />} onClick={() => {
                           setFormDetalle({ ...formDetalle, periodoNominaId: periodoSeleccionado.id });

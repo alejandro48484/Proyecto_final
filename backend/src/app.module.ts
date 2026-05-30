@@ -17,12 +17,12 @@ import { SupabaseModule } from './supabase/supabase.module';
       {
         name: 'short',
         ttl: 60000,
-        limit: 20,
+        limit: 100,
       },
       {
         name: 'long',
         ttl: 3600000,
-        limit: 200,
+        limit: 500,
       },
     ]),
     SupabaseModule,
